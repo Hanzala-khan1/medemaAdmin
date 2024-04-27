@@ -74,6 +74,7 @@ const Index = () => {
         const email = loginUser?.data?.user?.email;
         const role = loginUser?.data?.user?.role;
         localStorage.setItem("role", role);
+        localStorage.setItem("user", JSON.stringify(loginUser.data.user));
         if (role == "doctor") {
           localStorage.setItem("speciality", role);
         }
@@ -89,7 +90,7 @@ const Index = () => {
       MySwal.fire({
         icon: "error",
         // title: 'Oops...',
-        text: err?.response?.data,
+        text: "err?.response?.data",
       });
     }
   };

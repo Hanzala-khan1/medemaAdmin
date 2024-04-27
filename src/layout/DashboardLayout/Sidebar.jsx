@@ -45,66 +45,66 @@ const [avt,setAvt]=useState("/images/user.png")
     }
   }, [router, current]);
 
-useEffect(()=>{
-  const role = localStorage.getItem('role')
-  const id = localStorage.getItem('id')
-  const fetchData =async(a,b)=>{
-    const docRef = query(collection(db,a),where("auth_id","==",b))
+// useEffect(()=>{
+//   const role = localStorage.getItem('role')
+//   const id = localStorage.getItem('id')
+//   const fetchData =async(a,b)=>{
+//     const docRef = query(collection(db,a),where("auth_id","==",b))
 
-    try{
-      const res = await getDocs(docRef)
-      // console.log(res.docs[0].data())
-      // console.log(res.docs[0].data(),"data")
-      setAvt(res.docs[0]?.data()?.images?.url)
-    }catch(error){
-      console.log(error)
-    }
-  }
-  const fetchRehab =async(a,b)=>{
-    const docRef = query(collection(db,a),where("auth_id","==",b))
+//     try{
+//       const res = await getDocs(docRef)
+//       // console.log(res.docs[0].data())
+//       // console.log(res.docs[0].data(),"data")
+//       setAvt(res.docs[0]?.data()?.images?.url)
+//     }catch(error){
+//       console.log(error)
+//     }
+//   }
+//   const fetchRehab =async(a,b)=>{
+//     const docRef = query(collection(db,a),where("auth_id","==",b))
 
-    try{
-      const res = await getDocs(docRef)
-      // console.log(res.docs[0].data())
-      // console.log(res.docs[0].data(),"data")
-      setAvt(res.docs[0]?.data()?.images[0]?.url)
-    }catch(error){
-      console.log(error)
-    }
-  }
-  const fetchUser =async(a,b)=>{
-    const docRef = doc(db,a,b)
+//     try{
+//       const res = await getDocs(docRef)
+//       // console.log(res.docs[0].data())
+//       // console.log(res.docs[0].data(),"data")
+//       setAvt(res.docs[0]?.data()?.images[0]?.url)
+//     }catch(error){
+//       console.log(error)
+//     }
+//   }
+//   const fetchUser =async(a,b)=>{
+//     const docRef = doc(db,a,b)
 
-    try{
-      const res = await getDoc(docRef)
-      console.log(res?.data())
-      // console.log(res.docs[0].data(),"data")
-      setAvt(res?.data()?.images?.url)
-    }catch(error){
-      console.log(error)
-    }
-  }
+//     try{
+//       const res = await getDoc(docRef)
+//       console.log(res?.data())
+//       // console.log(res.docs[0].data(),"data")
+//       setAvt(res?.data()?.images?.url)
+//     }catch(error){
+//       console.log(error)
+//     }
+//   }
  
-  switch (role) {
-    case  "physio":
-        fetchData(role,id)
-      break;
-      case  "aya":
-        fetchData(role,id)
-      break;
-      case  "nurse":
-        fetchData("nurses",id)
-      break;
-      case  "rehab":
-        fetchRehab("rehab",id)
-      break;
-      case 'admin':
-        fetchUser("users",id)
-      break;
-    default:
-      break;
-  }
-},[router.pathname])
+//   switch (role) {
+//     case  "physio":
+//         fetchData(role,id)
+//       break;
+//       case  "aya":
+//         fetchData(role,id)
+//       break;
+//       case  "nurse":
+//         fetchData("nurses",id)
+//       break;
+//       case  "rehab":
+//         fetchRehab("rehab",id)
+//       break;
+//       case 'admin':
+//         fetchUser("users",id)
+//       break;
+//     default:
+//       break;
+//   }
+// },[router.pathname])
 
   useEffect(() => {
     const role = localStorage.getItem('role')

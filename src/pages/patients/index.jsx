@@ -8,7 +8,7 @@ import {
   Spin,
   Popconfirm,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import avatar from "../../../public/images/user.png";
 import Head from "next/head";
 
@@ -19,7 +19,7 @@ import {
   CheckCircleOutlined,
 } from "@ant-design/icons";
 import React from "react";
-import { Modal, Form, Input, Button, Upload, Radio,Select,Image } from "antd";
+import { Modal, Form, Input, Button, Upload, Radio, Select, Image } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { auth, db, storage } from "@/config/firebase";
 import {
@@ -31,7 +31,7 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { useQuery,useQueryClient,useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
@@ -44,20 +44,15 @@ import {
 } from "firebase/storage";
 import { useRef } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { BASE_URL } from "@/services/endpoints";
+import axios from "axios";
+import { typescript } from "../../../next.config";
+import { addRehab, deleteRehab, deleteUser, updateuser, userSignup } from "@/services";
+import { convertEmptyStringToNull } from "@/lib/commonfunction";
 const { TextArea } = Input;
 
 const Index = () => {
   const MySwal = withReactContent(Swal)
-    const bloodGroups= [
-"O positive",
-"O negative",
-"A positive", 
-"A negative",
-"B positive",
-"B negative",
-"AB positive",
-"AB negative"
-]
   const [visibleAlert, setVisibleAlert] = useState(false);
   const [alertText, setAlertText] = useState("");
   const [alertType, setAlertType] = useState("success");
@@ -77,102 +72,236 @@ const Index = () => {
   var previewArr = [];
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    name: "",
-    address: "",
-    email: "",
-    password: "",
-    phone: "",
-    details: "",
-    treatment: "",
-    bloodGroup: "",
-    rgNo:"",
-    city:"",
-    nok:"",
-    insurance:"no",
-    insuranceCompany:"",
-    insuranceNo:"",
-    ref:"",
-    gender:"",
-    id: "",
+    type: null,
+    role: null,
+    full_name: null,
+    email: null,
+    password: null,
+    confirmPassword: null,
+    description: null,
+    discount: null,
+    address: null,
+    city: null,
+    phone: null,
+    is_rehab_employee: null,
+    is_rehab_admin: null,
+    rehab: null,
+    is_super_admin: null,
+    availability: null,
+    details: null,
+    dob: null,
+    education: null,
+    experience: null,
+    gender: "male",
+    hospital: null,
+    emergency: null,
+    perHour: null,
+    perDay: null,
     images: {
       url: "",
       name: "",
     },
   });
+  const [userData, setUserdata] = useState([])
 
-  const handleFormChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+  let getuserdata = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+      // let data = {
+      //   page: 1, 
+      //   limit: 20, 
+      // };
+      let url = `${BASE_URL}/user/getUserByType`;
+      let body = {
+        page: 1,
+        limit: 20,
+        type: "Individual",
+        role: "Patient"
+      }
+      // const userCount = await axios.get(url, data,{ headers });
+      const userList = await axios({
+        method: 'post',
+        url: url,
+        data: body
+      });
+      if (userList.data.userList) {
+        setUserdata(userList.data.userList.results);
+      }
+      else {
+        console.log("no rehab Found")
+      }
+
+    } catch (error) {
+      console.log("err..", error);
+      MySwal.hideLoading(); // Assuming MySwal is for a loading indicator
+    }
   };
-
+  useEffect(() => {
+    getuserdata()
+  }, [])
+  const handleFormChange = (event) => {
+    console.log(event.target)
+    const { name, value } = event.target;
+    // if (name == "name") {
+    //   const val = value?.toLowerCase();
+    //   setFormData((prevFormData) => ({ ...prevFormData, [name]: val }));
+    // } else {
+      setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+    // }
+  };
   const handleGenderChange = (value) => {
     setFormData((e) => ({ ...e, gender: value }));
   };
-  const handleInsurance = (value) => {
-    setFormData((e) => ({ ...e, insurance: value }));
-  };
-  const handleTreatmentChange =(value)=>{
-    setFormData((e)=>({...e,treatment:value}))
-  }
-  const handleInsuranceChange =(value)=>{
-    setFormData((e)=>({...e,insuranceCompany:value}))
-  }
-  const handleRelation =(value)=>{
-    setFormData((e)=>({...e,nokRelation:value}))
-  }
-  const handleBloodGroup =(value)=>{
-    setFormData((e)=>({...e,bloodGroup:value}))
-  }
+
   const createUser = async () => {
     createUserWithEmailAndPassword(auth, formData?.email, formData?.password)
-    .then((userCredential) => {
-      const user = userCredential.user;
+      .then((userCredential) => {
+        const user = userCredential.user;
 
-      const userData = {
-        name: formData?.name,
-        email: formData?.email,
-        role: 'patient'
-      };
-      const usersCollectionRef = collection(db, "users");
-      const userDocRef = doc(usersCollectionRef, user.uid);
+        const userData = {
+          name: formData?.name,
+          email: formData?.email,
+          role: 'nurse',
+          id: user?.uid
+        };
+        const usersCollectionRef = collection(db, "users");
+        const userDocRef = doc(usersCollectionRef, user.uid);
 
-      setDoc(userDocRef, userData)
-      .then(() => {
-        imgUrl==""? addData("",user?.uid):
-        handleUploadImage(user?.uid);
-        console.log("User data saved successfully")
+        setDoc(userDocRef, userData)
+          .then(() => {
+            imgUrl == "" ? addData("", user?.uid) :
+              handleUploadImage(user?.uid);
+            console.log("User data saved successfully")
+          })
+          .catch((error) => {
+            console.log("Error saving user data:", error)
+          })
+      }).catch(() => {
+        MySwal.fire({
+          icon: 'error',
+          // title: 'Oops...',
+          text: ' Email already in use',
+
+        })
       })
-      .catch((error) => {
-        console.log("Error saving user data:", error)
-      })
-    }).catch(()=>{
+  }
+  const addMutaion = useMutation(createUser, {
+
+    onSuccess: () => {
+      console.log("succes");
+      queryClient.invalidateQueries(["Nurses"])
+    }
+  })
+  const handleFormSubmit = async (e) => {
+    try {
+      e.preventDefault();
+      console.log("nenennenenenenen", formData)
+      let params = convertEmptyStringToNull(formData)
+      params['type'] = "Individual"
+      params["role"] = "Patient"
+      if (!editData) {
+        await userSignup(params)
+          .then((res) => {
+            if (res.data.new_rehab) {
+              setVisible(false);
+              getuserdata()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "Nurse Added Successfully",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("send error.nnnnn..", err);
+            MySwal.fire({
+              icon: "error",
+              // title: 'Oops...',
+              text: err?.response?.data?.message,
+            });
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            handleOk();
+            handleCancel()
+          });
+      } else {
+        console.log("i am ok")
+        await updateuser(params)
+          .then((res) => {
+            if (res.data) {
+              setVisible(false);
+              getuserdata()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "User Updated Successfull",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("send error.nnnnn..", err);
+            MySwal.fire({
+              icon: "error",
+              // title: 'Oops...',
+              text: err?.response?.data?.message,
+            });
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            handleOk();
+            handleCancel()
+          });
+      }
+    } catch (error) {
+      console.log(error)
       MySwal.fire({
-        icon: 'error',
+        icon: "error",
         // title: 'Oops...',
-        text: 'Email already in use',
-   
-      })
-    })
-  }
- const addMutaion = useMutation(createUser,{
-  
-  onSuccess:()=>{
-    console.log("succes");
-    queryClient.invalidateQueries(["Patient"])
-  }
- })
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    if (editData) {
-      handleUploadImage();
-    } else {
-      addMutaion.mutate()
-      // createUser();
-      // handleUploadImage();
+        text: error?.response,
+      });
+    }
+  };
+
+  const deleteUserdata = async (e) => {
+    console.log(e);
+    try {
+      await deleteUser(e)
+        .then((res) => {
+          if (res.data) {
+            setVisible(false);
+            getuserdata()
+            MySwal.fire({
+              icon: "success",
+              // title: 'Oops...',
+              text: "User Deleted Successful",
+            });
+          }
+        })
+        .catch((err) => {
+          console.log("send error.nnnnn..", err);
+          MySwal.fire({
+            icon: "error",
+            // title: 'Oops...',
+            text: err?.response?.data?.message,
+          });
+        })
+        .finally(() => {
+          MySwal.hideLoading();
+          handleOk();
+          handleCancel()
+        });
+
+    } catch (err) {
+      console.log(err);
     }
   };
   const delteImage = async () => {
-    const desertRef = ref(storage, `patient/${imgName}`);
+    const desertRef = ref(storage, `nurses/${imgName}`);
 
     try {
       const res = await deleteObject(desertRef);
@@ -180,35 +309,16 @@ const Index = () => {
       setPreview("");
       setImgName("");
       setBtnPre(<span>Deleted</span>);
-      await updateDoc(doc(db, "patient", formData.id), { images: {} });
+      await updateDoc(doc(db, "nurses", formData.id), { images: {} });
     } catch (err) {
       console.log(err);
     }
   };
-const getInsurance = async()=>{
-   var brr=[];
-   const docref = collection(db,"insurance")    
-  try{
-       const res = await getDocs(docref);
-       res.docs.map((doc)=>{
-        brr.push(doc.data())
-       })
-       return brr
-      }catch(error){
- console.log(error)
-      }
-}
-  
-const insuranceData = useQuery(['Insurance'],getInsurance,{
-  staleTime:600000
-})
-if(insuranceData.isLoading==false){
-  // console.log(insuranceData.data)
-}
+
   const addData = async (imageUrl, uid) => {
     // setBtnAdd("disable");
     const url = imageUrl;
-    const newCityRef = collection(db, "patient");
+    const newCityRef = collection(db, "nurses");
     // const {title,fees,address,powerAvail,doctorAvail,}=formData
 
     try {
@@ -217,25 +327,25 @@ if(insuranceData.isLoading==false){
       });
       console.log(res.id);
 
-      await updateDoc(doc(db, "patient", res.id), {
+      await updateDoc(doc(db, "nurses", res.id), {
         id: res.id,
-        images: { url: imageUrl?imageUrl:"", name:imgUrl!==""?imgUrl.uid:"" },
-      
+        images: { url: imageUrl ? imageUrl : "", name: imgUrl !== "" ? imgUrl.uid : "" },
+
       });
-      queryClient.invalidateQueries(["Patient"]);
+      queryClient.invalidateQueries(["Nurses"]);
       MySwal.fire({
         icon: 'success',
         // title: 'Oops...',
         text: ' Data added Successfull',
-   
+
       })
       setImgUrl("")
       setBtnAdd("primary");
       handleCancel();
-      // router.reload("/patient");
-   
+      // router.reload("/nurses");
 
-   
+
+
       setLoading(false);
     } catch (err) {
       handleCancel();
@@ -244,57 +354,57 @@ if(insuranceData.isLoading==false){
         icon: 'error',
         title: 'Oops...',
         text: 'Something went wrong!',
-        
+
       })
       setLoading(false)
       handleCancel()
     }
   };
-  const updateDocData= async(docs)=>{
- 
-    try{
-     if (inUpdate) {
-       await updateDoc(doc(db, "patient", formData.id), {
-         images: { url: docs, name: imgUrl.uid },
-       });
-     }
-     handleCancel()
-     queryClient.invalidateQueries(["Patient"])
-     MySwal.fire({
-      icon: 'success',
-      // title: 'Oops...',
-      text: 'Edited Successfull',
- 
-    })
-     setInUpdate(false);
-     
-     handleOk();
-     setEditData(false);
-   
-    
-    }
-  catch(error){
-   console.log(error)
-  }
+  const updateDocData = async (docs) => {
 
- }
+    try {
+      if (inUpdate) {
+        await updateDoc(doc(db, "nurses", formData.id), {
+          images: { url: docs, name: imgUrl.uid },
+        });
+      }
+      handleCancel()
+      queryClient.invalidateQueries(["Nurses"])
+      MySwal.fire({
+        icon: 'success',
+        // title: 'Oops...',
+        text: 'Edited Successfull',
+
+      })
+      setInUpdate(false);
+
+      handleOk();
+      setEditData(false);
+
+
+    }
+    catch (error) {
+      console.log(error)
+    }
+
+  }
   const updateData = async (docs) => {
-    const newCityRef = collection(db, "patient");
+    const newCityRef = collection(db, "nurses");
     // const {title,fees,address,powerAvail,doctorAvail,}=formData
 
     try {
       if (inUpdate) {
-        const desertRef = ref(storage, `patient/${formData.images.name}`);
+        const desertRef = ref(storage, `nurses/${formData.images.name}`);
         const deleteImg = await deleteObject(desertRef);
         // console.log(deleteImg);
       }
-      await updateDoc(doc(db, "patient", formData.id), { ...formData });
-   
-     
+      await updateDoc(doc(db, "nurses", formData.id), { ...formData });
+
+
       updateDocData(docs)
-  
-  
-   
+
+
+
     } catch (err) {
       console.log(err);
       updateDocData(docs)
@@ -302,43 +412,43 @@ if(insuranceData.isLoading==false){
       //   icon: 'error',
       //   title: 'Oops...',
       //   text: 'Something went wrong!',
-        
+
       // })
       setLoading(false)
       handleCancel()
     }
   };
-  const deleteDocData= async(e)=>{
-    try{
-      const res = await deleteDoc(doc(db, "patient", e.id));
-      queryClient.invalidateQueries(["Patient"]);
+  const deleteDocData = async (e) => {
+    try {
+      const res = await deleteDoc(doc(db, "nurses", e.id));
+      queryClient.invalidateQueries(["Nurses"]);
       console.log(res)
       MySwal.fire({
         icon: 'success',
         // title: 'Oops...',
         text: 'Deleted ',
-   
+
       })
-    }catch(error){
+    } catch (error) {
       console.log(error)
       MySwal.fire({
         icon: 'error',
         // title: 'Oops...',
         text: 'some thing went wrong',
-   
+
       })
     }
   }
   const deleteData = async (e) => {
     console.log(e);
     try {
-      const desertRef = ref(storage, `patient/${e.images.name}`);
+      const desertRef = ref(storage, `nurses/${e.images.name}`);
       const deleteImg = await deleteObject(desertRef);
       deleteDocData(e)
       // console.log(deleteImg);
       setAlertType("error");
-      
-    
+
+
       // console.log(deleteImg);
       setAlertType("error");
       // router.reload("/category");
@@ -355,7 +465,7 @@ if(insuranceData.isLoading==false){
   };
   const handleUploadImage = async (uid) => {
     setLoading(true);
-    const imgRef = ref(storage, `patient/${imgUrl ? imgUrl.uid : ""}`);
+    const imgRef = ref(storage, `nurses/${imgUrl ? imgUrl.uid : ""}`);
 
     try {
       const res = await uploadBytes(imgRef, imgUrl);
@@ -374,7 +484,7 @@ if(insuranceData.isLoading==false){
 
   const fetchData = async () => {
     let arr = [];
-    const dbRef = collection(db, "patient");
+    const dbRef = collection(db, "nurses");
     try {
       const res = await getDocs(dbRef);
       res.docs.map((doc) => {
@@ -385,7 +495,7 @@ if(insuranceData.isLoading==false){
       console.log(error);
     }
   };
-  const { isLoading, data, error } = useQuery(["Patient"], fetchData, {
+  const { isLoading, data, error } = useQuery(["Nurses"], fetchData, {
     staleTime: 60000,
   });
   // console.log(isLoading, data);
@@ -403,23 +513,31 @@ if(insuranceData.isLoading==false){
 
   const handleCancel = () => {
     setFormData({
-      name: "",
-      address: "",
-      email: "",
-      password: "",
-      phone: "",
-      details: "",
-      treatment: "",
-      bloodGroup: "",
-      rgNo:"",
-      city:"",
-      nok:"",
-      insurance:"no",
-      insuranceCompany:"",
-      insuranceNo:"",
-      ref:"",
-      gender:"",
-      id: "",
+      type: null,
+      role: null,
+      full_name: null,
+      email: null,
+      password: null,
+      confirmPassword: null,
+      description: null,
+      discount: null,
+      address: null,
+      city: null,
+      phone: null,
+      is_rehab_employee: null,
+      is_rehab_admin: null,
+      rehab: null,
+      is_super_admin: null,
+      availability: null,
+      details: null,
+      dob: null,
+      education: null,
+      experience: null,
+      gender: "male",
+      hospital: null,
+      emergency: null,
+      perHour: null,
+      perDay: null,
       images: {
         url: "",
         name: "",
@@ -445,7 +563,7 @@ if(insuranceData.isLoading==false){
         height={95}
         alt="image"
       />
-    
+
     </div>
   ) : preview == "" ? (
     <div>
@@ -461,7 +579,7 @@ if(insuranceData.isLoading==false){
         height={95}
         alt="image"
       />
- 
+
     </div>
   );
 
@@ -493,22 +611,22 @@ if(insuranceData.isLoading==false){
     {
       title: (
         <div className="flex items-center justify-center space-x-4">
-         
+
           {/* <Image
             src={"/images/sort.svg"}
             width={20}
             height={20}
          
           /> */}
-           <span className="text-base font-poppins font-medium">#</span>
+          <span className="text-base font-poppins font-medium">#</span>
         </div>
       ),
       dataIndex: "no",
       sorter: (a, b) => a.age - b.age,
-      render: (_, record,index) => (
+      render: (_, record, index) => (
         <div className="w-full flex items-center justify-center">
           <span className="text-base font-poppins font-medium text-[#474747]">
-            {index+1}
+            {index + 1}
           </span>
         </div>
       ),
@@ -516,14 +634,14 @@ if(insuranceData.isLoading==false){
     {
       title: (
         <div className="flex items-center space-x-4">
-             <Image
+          <Image
             src={"/images/sort.svg"}
             width={20}
             height={20}
             style={{ marginLeft: "8px" }}
           />
           <span className="text-base font-poppins font-medium">Image</span>
-       
+
         </div>
       ),
       dataIndex: "date",
@@ -539,7 +657,7 @@ if(insuranceData.isLoading==false){
                   className="flex items-center justify-center"
                 /> */}
           <Image
-            src={record.images?record.images.url:''}
+            src={record.images ? record.images.url : ''}
             alt={record.name}
             width={40}
             height={40}
@@ -563,11 +681,11 @@ if(insuranceData.isLoading==false){
       dataIndex: "name",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.name;
-        return record?.name ? (
+        let short = record.full_name;
+        return record?.full_name ? (
           <div className="flex items-center w-[160px] justify-center space-x-2">
             <span className="text-sm font-poppins text-clip font-medium text-[#474747]">
-              {record.name ? short.slice(0, 50) : "NA"}
+              {record.full_name ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         ) : (
@@ -575,6 +693,7 @@ if(insuranceData.isLoading==false){
         );
       },
     },
+
     {
       title: (
         <div className="flex items-center space-x-4">
@@ -582,7 +701,7 @@ if(insuranceData.isLoading==false){
             src={"/images/sort.svg"}
             width={20}
             height={20}
-            
+            style={{ marginLeft: "8px" }}
           />
           <span className="text-base font-poppins font-medium">Gender</span>
         </div>
@@ -592,12 +711,12 @@ if(insuranceData.isLoading==false){
       render: (_, record) => {
         return record?.gender ? (
           <div className="flex items-center justify-center  space-x-2">
-          {record.gender=="male"?
-             <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
-         :
-         <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
+            {record.gender == "male" ?
+              <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
+              :
+              <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
             }
-          
+
           </div>
         ) : (
           "N/A"
@@ -613,7 +732,7 @@ if(insuranceData.isLoading==false){
             height={20}
             style={{ marginLeft: "8px" }}
           />
-          <span className="text-base font-poppins font-medium">Affiliated </span>
+          <span className="text-base font-poppins font-medium">Availability </span>
         </div>
       ),
       dataIndex: "provider",
@@ -621,7 +740,7 @@ if(insuranceData.isLoading==false){
       render: (_, record) => {
         return record?.gender ? (
           <div className="flex items-center justify-center  space-x-2">
-            {record?.ref == "" ? (
+            {record?.availability == "" ? (
               <div className="w-[60px] py-1 bg-[#e05a5a] text-center text-[#f3f8f3]">
                 No
               </div>
@@ -640,19 +759,19 @@ if(insuranceData.isLoading==false){
       title: (
         <div className="flex items-center justify-center  w-[160px] space-x-4">
           <Image src={"/images/sort.svg"} width={20} height={20} />
-          <span className="text-base font-poppins font-medium">Treatment</span>
+          <span className="text-base font-poppins font-medium">Details</span>
         </div>
       ),
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.treatment;
+        let short = record.description;
 
         return (
           <div className=" flex items-center w-[160px] justify-center">
             <span className="text-sm  text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              {record.treatment ? short.slice(0, 50) : "NA"}
+              {record.description ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         );
@@ -660,28 +779,40 @@ if(insuranceData.isLoading==false){
     },
     {
       title: (
-        <div className="flex items-center justify-center  w-[160px] space-x-4">
-          <Image src={"/images/sort.svg"} width={20} height={20} />
-          <span className="text-base font-poppins font-medium">Details</span>
+        <div className="flex items-center  justify-center  w-[160px] space-x-4">
+          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+          <span className="text-base font-poppins font-medium">Fees</span>
         </div>
       ),
-      dataIndex: "service",
+      dataIndex: "status",
       sorter: (a, b) => a.age - b.age,
-      render: (_, record) => {
-        let short = record.details;
-
-        return (
-          <div className=" flex items-center w-[160px] justify-center">
-            <span className="text-sm  text-clip font-poppins font-medium text-[#474747]">
-              {/* {record.description} */}
-              {record.details ? short.slice(0, 50) : "NA"}
-            </span>
-          </div>
-        );
-      },
+      render: (_, record) => (
+        <div className=" flex items-center w-[160px] justify-center">
+          <span className="mx-auto text-sm font-poppins font-normal text-[black]  py-1">
+            {record.fees + "" + "$"}
+          </span>
+        </div>
+      ),
     },
-
-
+    {
+      title: (
+        <div className="flex items-center space-x-4 justify-center w-[160px]">
+          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+          <span className="text-base font-poppins font-medium">Discount</span>
+        </div>
+      ),
+      dataIndex: "payment",
+      sorter: (a, b) => a.age - b.age,
+      render: (_, record) => (
+        <div className="w-[160px] flex items-center  justify-center">
+          {
+            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+              {record.discount + "" + "$"}
+            </span>
+          }
+        </div>
+      ),
+    },
 
     {
       title: (
@@ -707,102 +838,141 @@ if(insuranceData.isLoading==false){
         </div>
       ),
     },
-   
     {
       title: (
-        <div className="flex items-center justify-center  w-[160px] space-x-4">
-          <Image src={"/images/sort.svg"} width={20} height={20} />
-          <span className="text-base font-poppins font-medium">next of Kin</span>
-        </div>
-      ),
-      dataIndex: "service",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => {
-        let short = record?.nok
-
-        return (
-          <div className=" flex items-center w-[160px] justify-center">
-            <span className="text-sm  text-clip font-poppins font-medium text-[#474747]">
-              {/* {record.description} */}
-              {record?.nok ? short.slice(0, 50) : "NA"}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      title: (
-        <div className="flex items-center justify-center  w-[160px] space-x-4">
-          <Image src={"/images/sort.svg"} width={20} height={20} />
-          <span className="text-base font-poppins font-medium">Relation with next of kin</span>
-        </div>
-      ),
-      dataIndex: "service",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => {
-        let short = record?.nokRelation
-
-        return (
-          <div className=" flex items-center w-[160px] justify-center">
-            <span className="text-sm capitalize text-clip font-poppins font-medium text-[#474747]">
-              {/* {record.description} */}
-              {record?.nokRelation ? short.slice(0, 50) : "NA"}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      title: (
-        <div className="flex items-center justify-center  w-[160px] space-x-4">
-          <Image src={"/images/sort.svg"} width={20} height={20} />
-          <span className="text-base font-poppins font-medium">Blood Group</span>
-        </div>
-      ),
-      dataIndex: "service",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => {
-        let short = record?.bloodGroup
-
-        return (
-          <div className=" flex items-center w-[160px] justify-center">
-            <span className="text-sm capitalize text-clip font-poppins font-medium text-[#474747]">
-              {/* {record.description} */}
-              {record?.bloodGroup ? short.slice(0, 50) : "NA"}
-            </span>
-          </div>
-        );
-      },
-    },
-
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[260px]">
+        <div className="flex items-center space-x-4 justify-center w-[160px]">
           <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Insurance</span>
+          <span className="text-base font-poppins font-medium">Specialization</span>
         </div>
       ),
-      dataIndex: "insurance",
+      dataIndex: "payment",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => (
-        <div className="w-full flex flex-col items-center  justify-center">
+        <div className="w-full flex items-center  justify-center">
           {
-            <>
-              <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-                Insurance: {record?.insurance}
-              </span>
-              <span className="mx-auto text-center  text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-                Insurance Company: {record.insuranceCompany? record.insuranceCompany:"NA"}
-              </span>
-              <span className="mx-auto text-center  text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-                Insurance Company: {record.insuranceNo?record.insuranceNo:"NA"}
-              </span>
-            </>
+            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+              {record?.role}
+            </span>
           }
         </div>
       ),
     },
-  
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Medial Registation No</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record?.rgNo}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
+    {
+      title: (
+        <div className="flex items-center space-x-4 justify-center w-[160px]">
+          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+          <span className="text-base font-poppins font-medium">Education</span>
+        </div>
+      ),
+      dataIndex: "payment",
+      sorter: (a, b) => a.age - b.age,
+      render: (_, record) => (
+        <div className="w-full flex items-center  justify-center">
+          {
+            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+              {record.education}
+            </span>
+          }
+        </div>
+      ),
+    },
+    {
+      title: (
+        <div className="flex items-center space-x-4 justify-center w-[160px]">
+          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+          <span className="text-base font-poppins font-medium">Experience</span>
+        </div>
+      ),
+      dataIndex: "payment",
+      sorter: (a, b) => a.age - b.age,
+      render: (_, record) => (
+        <div className="w-full flex items-center  justify-center">
+          {
+            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+              {record.experience}
+            </span>
+          }
+        </div>
+      ),
+    },
+    {
+      title: (
+        <div className="flex items-center space-x-4 justify-center w-[160px]">
+          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+          <span className="text-base font-poppins font-medium">
+            Working at
+          </span>
+        </div>
+      ),
+      dataIndex: "payment",
+      sorter: (a, b) => a.age - b.age,
+      render: (_, record) => (
+        <div className="w-full flex items-center  justify-center">
+          {
+            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+              {record.hospital}
+            </span>
+          }
+        </div>
+      ),
+    },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Latitude</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record.lat}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Longitude</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record.long}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
     {
       title: (
         <div className="flex items-center space-x-4">
@@ -841,7 +1011,7 @@ if(insuranceData.isLoading==false){
                   label: (
                     <Button
                       onClick={() => {
-                        deleteData(record);
+                        deleteUserdata(record)
                       }}
                       danger
                     >
@@ -883,392 +1053,385 @@ if(insuranceData.isLoading==false){
   const onChange = (pagination, filters, sorter, extra) => {
     console.log("params", pagination, filters, sorter, extra);
   };
-  // console.log(typeof headings.length.toString());
+  console.log(typeof headings.length.toString());
   return (
     <div className="flex flex-col bg-white space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="font-semibold font-barlow text-lg md:text-2xl md:ml-6">Patients</h1>
+        <h1 className="font-semibold font-barlow text-2xl ml-6">Patients</h1>
         <button
-          className=" bg-[#1A3578] hover:bg-blue-900 text-white font-semibold py-1 md:py-3 px-4 rounded "
+          className=" bg-[#1A3578] hover:bg-blue-900 text-white font-semibold py-3 px-4 rounded "
           onClick={() => {
             setEditData(false);
             showModal();
           }}
         >
-          + Add Pateient
+          + Add patient
         </button>
       </div>
       <Modal
         open={visible}
-        title="Add Patient"
+        title="Add nurses"
         onOk={handleOk}
         onCancel={handleCancel}
         footer={false}
-        // style={{overflowY:"scroll"}}
+      // style={{overflowY:"scroll"}}
       >
         <form onSubmit={handleFormSubmit}>
-          <div className="grid grid-cols-12 gap-x-4 gap-y-1 ">
-          <div className="col-span-6  ">
-                <div className="col-span-1">
-                  <label className="text-md">Name</label>
-                </div>
-  
-                <Input
-                  type="text"
-                  required
-                  className="py-1 col-span-2 w-full outline-none border-b  border-gray rounded-md"
-                  placeholder="Enter Name"
-                  value={formData.name}
-                  name="name"
-                  onChange={handleFormChange}
-                />
-              </div>
-  
-              <div className="col-span-6 ">
-                <div className="col-span-1  w-full">
-                  <label className="text-md">Registration Number</label>
-                </div>
-                <Input
-                  required
-                  type="text"
-                  className="py-1 col-span-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Registration No"
-                  value={formData.rgNo}
-                  name="rgNo"
-                  onChange={handleFormChange}
-                />
-              </div>
-        
-          
-              <div className="col-span-6  ">
-                <div className="col-span-1  w-full">
-                  <label className="text-md">Email</label>
-                </div>
-                <Input
-                  type="email"
-                  className="py-1 col-span-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="jhon@abc.com"
-                  value={formData.email}
-                  name="email"
-                  onChange={handleFormChange}
-                />
-              </div>
-              <div className="col-span-6   ">
-                <div className="col-span-1  w-full">
-                  <label className="text-md">Password</label>
-                </div>
-                <Input.Password
-                  type="password"
-                  minLength='6'
-                  className="py-1 col-span-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="password"
-                  value={formData.password}
-                  name="password"
-                  onChange={handleFormChange}
-                />
-              </div>
-              <div className="col-span-6 ">
-                <div className="col-span-1  w-full" >
-                  <label className="text-md">Phone</label>
-                </div>
-                <Input
-                  type="text"
-                  className="py-1 col-span-2  outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="444-222-444"
-                  value={formData.phone}
-                  name="phone"
-                  onChange={handleFormChange}
-                />
-              </div>
-              <div className="col-span-6 ">
-                <div className="col-span-1  w-full">
-                  <label className="text-md">Address</label>
-                </div>
-                <Input
-                  required
-                  type="text"
-                  className="py-1 col-span-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Address"
-                  value={formData.address}
-                  name="address"
-                  onChange={handleFormChange}
-                />
-              </div>
-                   <div className="col-span-6 ">
-                <div className="col-span-1  w-full" >
-                  <label className="text-md">City</label>
-                </div>
-                <Input
-                  type="text"
-                  className="py-1 col-span-2  outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Enter your city"
-                  value={formData.city}
-                  name="city"
-                  onChange={handleFormChange}
-                />
-              </div>
-              <div className="col-span-6 ">
-                <div className="col-span-1  w-full" >
-                  <label className="text-md">Next of Kin</label>
-                </div>
-                <Input
-                  type="text"
-                  className="py-1 col-span-2  outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Next of Kin"
-                  value={formData.nok}
-                  name="nok"
-                  onChange={handleFormChange}
-                />
-              </div>
-              <div className="col-span-6 ">
-                <div className="col-span-1  w-full" >
-                  <label className="text-md">Next of Kin Relation</label>
-                </div>
-                <div>
-                <Select
-                  className=" col-span-2 w-full rounded-md text-black"
-                  
-                  name="nokRelation"
-                  placeholder="Relation"
-                  onChange={handleRelation}
-               value={formData.nokRelation}
-                >
-                  <Select.Option  value="brother">
-                    Brother
-                  </Select.Option>
-                  <Select.Option value="sister">Sister</Select.Option>
-                  <Select.Option value="wife">Wife</Select.Option>
-                  <Select.Option value="mother">Mother</Select.Option>
-                  <Select.Option value="father">Father</Select.Option>
-                  <Select.Option value="son">Son</Select.Option>
-                  <Select.Option value="daughter">Daughter</Select.Option>
-                </Select>
-                </div>
-              </div>
-              <div className="col-span-6  ">
-                <div className="col-span-1  w-full">
-                  <label className="text-md">Treatment</label>
-                </div>
-                <div>
-                <Select
-                  className=" col-span-2 w-full rounded-md text-black"
-                  
-                  name="treatment"
-                  placeholder="treatment"
-                  onChange={handleTreatmentChange}
-               value={formData.treatment}
-                >
-                  <Select.Option  value="physio">
-                    Physio
-                  </Select.Option>
-                  <Select.Option value="rehab">Rehab</Select.Option>
-                  <Select.Option value="nurse">Nurse</Select.Option>
-                  <Select.Option value="nurse">Other</Select.Option>
-                </Select>
-                </div>
-              </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "190px" }}>
-                  <label className="text-md">Blood Group</label>
-                </div>
-                <div>
-                <Select
-                  className="w-full  rounded-md text-black"
-                  name="treatment"
-                  placeholder="treatment"
-                  onChange={handleBloodGroup}
-               value={formData.bloodGroup}
-                >
-                  {
-                    bloodGroups.map((doc,index)=>{
-                    return(
-                      <Select.Option key={index}  value={doc}>
-                      {doc}
-                    </Select.Option>
-                    )
-                    })
-                  }
-                </Select>
-                </div>
-              </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "150px" }}>
-                  <label className="text-md">Gender</label>
-                </div>
-                <div>
-                <Select
-                 className="w-full  rounded-md text-black"
-                  name="gender"
-                  placeholder="select gender"
-                  onChange={handleGenderChange}
-                >
-                  <Select.Option defaultChecked value="male">
-                    Male
-                  </Select.Option>
-                  <Select.Option value="female">Female</Select.Option>
-                  <Select.Option value="other">Other</Select.Option>
-                </Select>
-                </div>
-              </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "150px" }}>
-                  <label className="text-md">Insurance</label>
-                </div>
-                <div>
-                <Select
-                 className="w-full  rounded-md text-black"
-                  name="insurance"
-                  placeholder="Has Insurance"
-                  onChange={handleInsurance}
-                >
-                  <Select.Option defaultChecked value="yes">
-                    Yes
-                  </Select.Option>
-                  <Select.Option value="no">No</Select.Option>
-                </Select>
-                </div>
-              </div>
-              {
-                formData.insurance=="yes"?
-                (
-                <div className="col-span-6  ">
-                <div className="col-span-1 transition-opacity duration-100 delay-1500  w-full">
-                  <label className="text-md">Insurance Company</label>
-                </div>
-                <div>
-                <Select
-                  className=" col-span-2 w-full rounded-md text-black"
-                  
-                  name="insuranceCompany"
-                  placeholder="insuranceCompany"
-                  onChange={handleInsuranceChange}
-               value={formData.insuranceCompany}
-                >
-                  {
-                    insuranceData?.data?.map((doc,index)=>{
-                    return(
-                      <Select.Option key={index} value={doc?.name}>
-                      {doc?.name}
-                    </Select.Option>
-                    )
-                    })
-                  }
-                </Select>
-                </div>
+          <div className="grid grid-cols-12 gap-x-4 gap-y-1">
+            <div className=" w-full  col-span-6  ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md   ">Name</label>
               </div>
 
-  ):""
-              }
-              {
-                     formData.insurance=="yes"?
-                     (
-                      <div className="col-span-6 ">
-                      <div className="col-span-1  w-full" >
-                        <label className="text-md">Insurance Number</label>
-                      </div>
-                      <Input
-                        type="text"
-                        className="py-1 col-span-2  outline-none w-full border-b  border-gray rounded-md"
-                        placeholder="Insurance Number"
-                        value={formData.insuranceNo}
-                        name="insuranceNo"
-                        onChange={handleFormChange}
-                      />
-                    </div>
-     
-       ):""
-                  
-              }
-              
-              <div className="col-span-12  ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-[17px] ">Details</label>
-                </div>
-                <div className=" w-full">
-                  <TextArea
-                    rows="2"
-                    type="text"
-                    className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                    placeholder="Enter Details Here"
-                    value={formData.details}
-                    name="details"
+              <Input
+                autoComplete="off"
+                type="text"
+                required
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="Enter Title"
+                value={formData.full_name}
+                name="full_name"
+                onChange={handleFormChange}
+              />
+            </div>
+            {/* <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md   ">Medical Registration No</label>
+              </div>
+
+              <Input
+                autoComplete="off"
+                type="text"
+                required
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="Registration No"
+                value={formData.rgNo}
+                name="rgNo"
+                onChange={handleFormChange}
+              />
+            </div> */}
+            {/* <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md   ">Specialization</label>
+              </div>
+
+              <Input
+                autoComplete="off"
+                type="text"
+                required
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="Specialization"
+                value={formData.speciality}
+                name="speciality"
+                onChange={handleFormChange}
+              />
+            </div> */}
+            <div className=" col-span-6 w-full md:col-span-6">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Fees/Day</label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="number"
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="fees/Day"
+                value={formData.perDay}
+                name="perDay"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className=" col-span-6 md:col-span-6">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Fees/Hour</label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="number"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="fees/Hour"
+                value={formData.perHour}
+                name="perHour"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Discount</label>
+              </div>
+              <Input
+                autoComplete="off"
+                type="number"
+                className="py-1 px-2 outline-none border-b w-full  border-gray rounded-md"
+                placeholder="2%"
+                value={formData.discount}
+                name="discount"
+                onChange={handleFormChange}
+              />
+            </div>
+
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Experience</label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Experience"
+                value={formData.experience}
+                name="experience"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Education</label>
+              </div>
+              <Input
+                autoComplete="off"
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Education"
+                value={formData.education}
+                name="education"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Email</label>
+              </div>
+              <Input
+                autoComplete="off"
+                type="email"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="jhon@abc.com"
+                value={formData.email}
+                name="email"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Password</label>
+              </div>
+              <Input.Password
+                autoComplete="off"
+
+                minLength='6'
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="******"
+                value={formData.password}
+                name="password"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">phone</label>
+              </div>
+              <Input
+                autoComplete="off"
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="444-222-444"
+                value={formData.phone}
+                name="phone"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+            <div style={{ width: "170px" }}>
+                <label className="text-md">Gender</label>
+              </div>
+                  <select
+                    className="  py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                    name="gender"
+                    value={formData.gender}
                     onChange={handleFormChange}
-                  />
+                    placeholder="Gender"
+                  >
+                    <option defaultChecked className="py-2" value="male">
+                      Male
+                    </option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
+            <div className="col-span-6  ">
+              <div style={{ width: "170px" }}>
+                <label className="">Working At</label>
               </div>
-  
-              <div className="col-span-6  mt-4">
-                <Form.Item
-                  label="Image"
-                  name="image"
-                  valuePropName="fileList"
-                  getValueFromEvent={(e) => {
-                    if (Array.isArray(e)) {
-                      return e;
-                    }
-                    setImgUrl(e.file);
-                    // handleUploadImage()
-                    let b = URL.createObjectURL(e.file);
-                    setPreview(b);
-                    setInUpdate(true);
-                    console.log(arr, "arr");
-                    return e && e.fileList;
-                  }}
-                >
-                  <Upload
-                  className="ml-12"
-                    name="image"
-                    listType="picture-card"
-                    showUploadList={false}
-                    beforeUpload={() => false}
-                  >
-                    {uploadButton}
-                  </Upload>
-                </Form.Item>
-                {/* <Form.Item className=" ml-14 -mt-4">
-                  <Button
-                    onClick={() => {
-                      changeImage();
-                    }}
-                  >
-                    {btnPre}
-                  </Button>
-                </Form.Item> */}
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="working at"
+                value={formData.hospital}
+                name="hospital"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="">Address</label>
               </div>
-              <div>
-                {previewArr.length
-                  ? previewArr.map((doc, index) => {
-                      return (
-                        <div key={index}>
-                          <Image src={doc} height={25} width={25} alt="img" />
-                        </div>
-                      );
-                    })
-                  : ""}
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.address}
+                name="address"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="">City</label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.city}
+                name="city"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className=""> Availability Yes/No
+                </label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.availability}
+                name="availability"
+                onChange={handleFormChange}
+              />
+            </div>
+            {/* <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Latitude</label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="124.000"
+                value={formData.lat}
+                name="lat"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Longitude</label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="-245.00"
+                value={formData.long}
+                name="long"
+                onChange={handleFormChange}
+              />
+            </div> */}
+            <div className="col-span-12  ">
+              <div style={{ width: "180px" }}>
+                <label className=" ">Details</label>
+              </div>
+              <div className="  w-full">
+                <TextArea
+                  rows="2"
+                  type="text"
+                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                  placeholder="Enter Details Here"
+                  value={formData.description}
+                  name="description"
+                  onChange={handleFormChange}
+                />
               </div>
             </div>
-            <div className="flex justify-center col-span-12">
-              {loading ? (
-                <div className="h-24 w-24 flex justify-center">
-                  <Spin />
-                </div>
-              ) : editData ? (
-                <Button
-                  type="primary"
-                  style={{ width: "120px" }}
-                  htmlType="submit"
+
+            <div className="col-span-6 mt-4">
+              <Form.Item
+                label="Image"
+                name="image"
+                valuePropName="fileList"
+                getValueFromEvent={(e) => {
+                  if (Array.isArray(e)) {
+                    return e;
+                  }
+                  setImgUrl(e.file);
+                  // handleUploadImage()
+                  let b = URL.createObjectURL(e.file);
+                  setPreview(b);
+                  setInUpdate(true);
+                  console.log(arr, "arr");
+                  return e && e.fileList;
+                }}
+              >
+                <Upload
+                  className="ml-11"
+                  name="image"
+                  listType="picture-card"
+                  showUploadList={false}
+                  beforeUpload={() => false}
                 >
-                  Update
-                </Button>
-              ) : (
-                <Button
-                  type={btnAdd}
-                  style={{ width: "120px" }}
-                  htmlType="submit"
-                >
-                  Add
-                </Button>
-              )}
+                  {uploadButton}
+                </Upload>
+              </Form.Item>
+            </div>
+            <div>
+              {previewArr.length
+                ? previewArr.map((doc, index) => {
+                  return (
+                    <div key={index}>
+                      <Image src={doc} height={25} width={25} alt="img" />
+                    </div>
+                  );
+                })
+                : ""}
+            </div>
+          </div>
+          <div className="flex justify-center col-span-12">
+            {loading ? (
+              <div className="h-24 w-24 flex justify-center">
+                <Spin />
+              </div>
+            ) : editData ? (
+              <Button
+                type="primary"
+                style={{ width: "120px" }}
+                htmlType="submit"
+              >
+                Update
+              </Button>
+            ) : (
+              <Button
+                type={btnAdd}
+                style={{ width: "120px" }}
+                htmlType="submit"
+              >
+                Add
+              </Button>
+            )}
           </div>
         </form>
 
@@ -1277,7 +1440,7 @@ if(insuranceData.isLoading==false){
       <div className="">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={userData}
           onChange={onChange}
           id="newOrders"
           scroll={{ x: 900 }}

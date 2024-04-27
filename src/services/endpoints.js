@@ -6,6 +6,8 @@ const ENDPOINTS = {
   SIGNUP: "/user/register",
   LOGIN: "/user/login",
   LOGOUT: "/user/logout",
+  UPDATEUSER: "/user/updateuser",
+  DELETE_USER: "/user/deleteUser",
   GET_ALL_REHAB: "/user/getAllRehabLists",
   GET_SINGLE_REHAB: "/user/getARehab",
   ADD_FAVOURITE: "/user/addRemoveFav",
@@ -14,5 +16,7 @@ const ENDPOINTS = {
   GET_ALL_ORDERS: "user/getAllBookings",
   GET_ALL_USER_COUNT: "user/getUsersCount",
   ADD_REHAB: "user/addRehab",
+  DELETE_REHAB: "user/deleteRehab",
+  UPDATE_REHAB: "user/updateRehab",
 };
 export { BASE_URL, ENDPOINTS };

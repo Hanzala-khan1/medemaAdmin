@@ -236,7 +236,7 @@ const Index = () => {
       }
     } else {
       console.log('expert not found')
-      return null;
+      // return null;
     }
   };
   const {data: expertData} = useQuery(["expert"], fetchData, {

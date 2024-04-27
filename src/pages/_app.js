@@ -22,27 +22,18 @@ const App = ({ Component, pageProps }) => {
   const [roles, setRoles] = useState('');
 
   useEffect(() => {
-    // Defer execution until component mounts on the client side
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     setUser(token);
     setRoles(role);
     interceptorConfig(store.dispatch);
-  }, []); // Empty dependency array ensures it runs only once after mount
+  }, []); 
 
-  console.log("uuuuuuuuuussssssssssssssss", user);
-
-  // // Redirect if user is not logged in
-  // useEffect(() => {
-  //   if (user === null) {
-  //     router.push('/signin');
-  //   }
-  // }, []);
-
-  if (typeof window === 'undefined' || user === null) {
-    // Prevent rendering on server side or until user data is fetched
-    return null;
-  }
+  useEffect(() => {
+    if (user === null) {
+      router.push('/signin');
+    }
+  }, []);
 
   // Render layouts based on route
   if (router.pathname === "/signin" || router.pathname === "/forgot") {

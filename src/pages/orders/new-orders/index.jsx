@@ -37,6 +37,8 @@ import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
 
 import { useRef } from "react";
+import axios from "axios";
+import { BASE_URL } from "@/services/endpoints";
 const { TextArea } = Input;
 
 const Index = () => {
@@ -52,22 +54,49 @@ const Index = () => {
   const router = useRouter();
   const [editData, setEditData] = useState(false);
   const [imgName, setImgName] = useState("");
+  const [orderData,SetOrderData]=useState([])
   const MySwal = withReactContent(Swal)
   const [role,setRole]=useState(null)
 const queryClient=useQueryClient()
-  // const fetchData = async () => {
-  //   let arr = [];
-  //   const dbRef = collection(db, "orders");
-  //   try {
-  //     const res = await getDocs(dbRef);
-  //     res.docs.map((doc) => {
-  //       arr.push(doc.data());
-  //     });
-  //     return arr;
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // };
+
+
+let getuserorders = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const headers = {
+      authorization: `Bearer ${token}`,
+    };
+
+    let url = `${BASE_URL}/user/getAllBookings`;
+    let body = {
+      page: 1,
+      limit: 20,
+    }
+    // const userCount = await axios.get(url, data,{ headers });
+    const orderlist = await axios({
+      method: 'get',
+      url: url,
+      data: body,
+      headers:headers
+    });
+    console.log("ordersordersorders",orderlist.data.bookings.results)
+    if (orderlist.data) {
+      SetOrderData(orderlist.data.bookings.results);
+    }
+    else {
+      console.log("no rehab Found")
+    }
+
+  } catch (error) {
+    console.log("err..", error);
+    MySwal.hideLoading(); // Assuming MySwal is for a loading indicator
+  }
+};
+useEffect(() => {
+  getuserorders()
+}, [])
+
   useEffect(()=>{
 setRole(localStorage.getItem("role"))
   },[])
@@ -252,11 +281,11 @@ if(!isLoading){
       dataIndex: "name",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.type;
-        return record?.type ? (
+        let short = record.package;
+        return record?.package ? (
           <div className="flex items-center w-[160px] justify-center space-x-2">
             <span className="text-sm font-poppins text-clip font-medium text-[#474747]">
-              {record.type ? short.slice(0, 50) : "NA"}
+              {record.package ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         ) : (
@@ -273,17 +302,17 @@ if(!isLoading){
             height={20}
             style={{ marginLeft: "0px" }}
           />
-          <span className="text-base font-poppins font-medium">Service Provider</span>
+          <span className="text-base font-poppins font-medium">Booked By</span>
         </div>
       ),
       dataIndex: "name",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.receiverName;
-        return record?.receiverName ? (
+        let short = record.booked_by.full_name;
+        return record?.booked_by.full_name ? (
           <div className="flex items-center w-[160px] justify-center space-x-2">
             <span className="text-sm font-poppins text-clip font-medium text-[#474747]">
-              {record.receiverName ? short.slice(0, 50) : "NA"}
+              {record.booked_by.full_name ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         ) : (
@@ -303,13 +332,13 @@ if(!isLoading){
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.patientDetail.patientName;
+        let short = record?.patientName;
 
         return (
           <div className=" flex items-center w-[160px] justify-center">
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              {record.patientDetail.patientName ? short.slice(0, 50) : "NA"}
+              {record?.patientName ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         );
@@ -325,7 +354,7 @@ if(!isLoading){
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.patientDetail.patientName;
+        let short = record?.patientName;
         let fromDate = new Date(record?.patientDetail?.bookFrom?.seconds * 1000);
         let toDate = new Date(record?.patientDetail?.bookFrom?.seconds * 1000);
 
@@ -333,11 +362,11 @@ if(!isLoading){
           <div className=" flex flex-col items-center  w-[160px] justify-center">
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              From {record.patientDetail.bookFrom ? record?.patientDetail?.bookFrom : "NA"}
+              From {record.patientDetail?.bookFrom ? record?.patientDetail?.bookFrom : "NA"}
             </span>
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              To {record.patientDetail.bookTo ? record?.patientDetail?.bookTo  : "NA"}
+              To {record.patientDetail?.bookTo ? record?.patientDetail?.bookTo  : "NA"}
             </span>
           </div>
         );
@@ -354,18 +383,22 @@ if(!isLoading){
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
         
-        let short = record.patientDetail.dob;
-        let convert1 = parseInt(short.slice(0,4))
-        let date = new Date().getFullYear()
-        let patientAge =  date-convert1
-        // console.log(date,convert1,patientAge,'Age')
+        let dobString = record.DOB; 
+        let dobDate = new Date(dobString); 
+        
+        let currentDate = new Date(); 
+        
+        let currentYear = currentDate.getFullYear(); 
+        let dobYear = dobDate.getFullYear(); 
+
+        let patientAge = currentYear - dobYear;
        
 
         return (
           <div className=" flex  items-center  w-[160px] justify-center">
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              {record.patientDetail.dob ? `${patientAge} Years` : "NA"}
+              {record.DOB ? `${patientAge} Years` : "NA"}
             </span>
           
           </div>
@@ -383,13 +416,13 @@ if(!isLoading){
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.patientDetail.message;
+        let short = record.reason_for_booking;
 
         return (
           <div className=" flex items-center w-[280px] justify-center">
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              {record.patientDetail.message ? short.slice(0, 50) : "NA"}
+              {record.reason_for_booking ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         );
@@ -405,17 +438,17 @@ if(!isLoading){
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.patientDetail.phone;
+        let short = record.phone;
 
         return (
           <div className=" flex flex-col items-center w-[280px] justify-center">
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              Phone :  {record.patientDetail.phone ? short.slice(0, 50) : "NA"}
+              Phone :  {record.phone ? short.slice(0, 50) : "NA"}
             </span>
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              Phone2 : {record.patientDetail.altPhone ? short.slice(0, 50) : "NA"}
+              Phone2 : {record.alternative_phone ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         );
@@ -436,9 +469,9 @@ if(!isLoading){
       dataIndex: "provider",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        return record?.patientDetail.patientGender ? (
+        return record?.gender ? (
           <div className="flex items-center justify-center  space-x-2">
-          {record.patientDetail.patientGender =="male"?
+          {record.gender =="male"?
              <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
          :
          <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
@@ -491,9 +524,9 @@ if(!isLoading){
         <div className="w-[250px] flex items-center justify-center">
           <span
        
-            className={`${record.payment!=="unpaid"? 'bg-green-300':'bg-orange'} mx-auto text-sm w-[250px] text-center font-poppins font-normal text-[black] px-6 py-1`}
+            className={`${record.payment_status!=="unpaid"? 'bg-green-300':'bg-orange'} mx-auto text-sm w-[250px] text-center font-poppins font-normal text-[black] px-6 py-1`}
           >
-            {record.payment}
+            {record.payment_status}
           </span>
         </div>
       ),
@@ -595,7 +628,7 @@ if(!isLoading){
       <div className="">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={orderData}
           onChange={onChange}
           id="newOrders"
           scroll={{ x: 900 }}

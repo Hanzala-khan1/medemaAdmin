@@ -42,7 +42,7 @@ console.log("ccccccccccccccccccccccccccurrent",currentUser)
       return userRes.data();
     }
 
-    return null;
+    // return null;
   });
   // console.log("user in layout", data);
   // if (isLoading) {

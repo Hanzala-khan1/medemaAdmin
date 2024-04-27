@@ -8,7 +8,7 @@ import {
   Spin,
   Popconfirm,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import avatar from "../../../public/images/user.png";
 import Head from "next/head";
 
@@ -19,7 +19,7 @@ import {
   CheckCircleOutlined,
 } from "@ant-design/icons";
 import React from "react";
-import { Modal, Form, Input, Button, Upload, Radio,Select,Image } from "antd";
+import { Modal, Form, Input, Button, Upload, Radio, Select, Image } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { auth, db, storage } from "@/config/firebase";
 import {
@@ -31,7 +31,7 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { useQuery,useQueryClient,useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
@@ -44,6 +44,11 @@ import {
 } from "firebase/storage";
 import { useRef } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { BASE_URL } from "@/services/endpoints";
+import axios from "axios";
+import { typescript } from "../../../next.config";
+import { addRehab, deleteRehab, deleteUser, updateuser, userSignup } from "@/services";
+import { convertEmptyStringToNull } from "@/lib/commonfunction";
 const { TextArea } = Input;
 
 const Index = () => {
@@ -67,98 +72,236 @@ const Index = () => {
   var previewArr = [];
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    name: "",
-    perDay: "",
-    perHour:"",
-    discount: "",
-    address: "",
-    email: "",
-    password: "",
-    phone: "",
-    details: "",
-    experience: "",
-    role:"aya",
-    lat:"",
-    rgNo:"",
-    speciality:"",
-    long:"",
-    workingAt: "",
-    education: "",
-    id: "",
-    ref:"",
+    type: null,
+    role: null,
+    full_name: null,
+    email: null,
+    password: null,
+    confirmPassword: null,
+    description: null,
+    discount: null,
+    address: null,
+    city: null,
+    phone: null,
+    is_rehab_employee: null,
+    is_rehab_admin: null,
+    rehab: null,
+    is_super_admin: null,
+    availability: null,
+    details: null,
+    dob: null,
+    education: null,
+    experience: null,
     gender: "male",
-    availability: "weekdays",
-    unavailability: [],
+    hospital: null,
+    emergency: null,
+    perHour: null,
+    perDay: null,
     images: {
       url: "",
       name: "",
     },
   });
+  const [userData, setUserdata] = useState([])
 
-  const handleFormChange = (event) => {
-    const { name, value } = event.target;
-    if(name=="name"){
-      const val = value?.toLowerCase();
-      setFormData((prevFormData) => ({ ...prevFormData, [name]: val }));
-    }else{
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
-  }
+  let getuserdata = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+      // let data = {
+      //   page: 1, 
+      //   limit: 20, 
+      // };
+      let url = `${BASE_URL}/user/getUserByType`;
+      let body = {
+        page: 1,
+        limit: 20,
+        type: "Individual",
+        role: "Aya"
+      }
+      // const userCount = await axios.get(url, data,{ headers });
+      const userList = await axios({
+        method: 'post',
+        url: url,
+        data: body
+      });
+      if (userList.data.userList) {
+        setUserdata(userList.data.userList.results);
+      }
+      else {
+        console.log("no rehab Found")
+      }
+
+    } catch (error) {
+      console.log("err..", error);
+      MySwal.hideLoading(); // Assuming MySwal is for a loading indicator
+    }
   };
-
+  useEffect(() => {
+    getuserdata()
+  }, [])
+  const handleFormChange = (event) => {
+    console.log(event.target)
+    const { name, value } = event.target;
+    // if (name == "name") {
+    //   const val = value?.toLowerCase();
+    //   setFormData((prevFormData) => ({ ...prevFormData, [name]: val }));
+    // } else {
+      setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+    // }
+  };
   const handleGenderChange = (value) => {
     setFormData((e) => ({ ...e, gender: value }));
   };
 
   const createUser = async () => {
     createUserWithEmailAndPassword(auth, formData?.email, formData?.password)
-    .then((userCredential) => {
-      const user = userCredential.user;
+      .then((userCredential) => {
+        const user = userCredential.user;
 
-      const userData = {
-        name: formData?.name,
-        email: formData?.email,
-        role: 'aya',
-        id:user?.uid
-      };
-      const usersCollectionRef = collection(db, "users");
-      const userDocRef = doc(usersCollectionRef, user.uid);
+        const userData = {
+          name: formData?.name,
+          email: formData?.email,
+          role: 'nurse',
+          id: user?.uid
+        };
+        const usersCollectionRef = collection(db, "users");
+        const userDocRef = doc(usersCollectionRef, user.uid);
 
-      setDoc(userDocRef, userData)
-      .then(() => {
-        imgUrl==""? addData("",user?.uid):
-        handleUploadImage(user?.uid);
-        console.log("User data saved successfully")
+        setDoc(userDocRef, userData)
+          .then(() => {
+            imgUrl == "" ? addData("", user?.uid) :
+              handleUploadImage(user?.uid);
+            console.log("User data saved successfully")
+          })
+          .catch((error) => {
+            console.log("Error saving user data:", error)
+          })
+      }).catch(() => {
+        MySwal.fire({
+          icon: 'error',
+          // title: 'Oops...',
+          text: ' Email already in use',
+
+        })
       })
-      .catch((error) => {
-        console.log("Error saving user data:", error)
-      })
-    }).catch(()=>{
+  }
+  const addMutaion = useMutation(createUser, {
+
+    onSuccess: () => {
+      console.log("succes");
+      queryClient.invalidateQueries(["Nurses"])
+    }
+  })
+  const handleFormSubmit = async (e) => {
+    try {
+      e.preventDefault();
+      console.log("nenennenenenenen", formData)
+      let params = convertEmptyStringToNull(formData)
+      params['type'] = "Individual"
+      params["role"] = "Aya"
+      if (!editData) {
+        await userSignup(params)
+          .then((res) => {
+            if (res.data.new_rehab) {
+              setVisible(false);
+              getuserdata()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "Nurse Added Successfully",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("send error.nnnnn..", err);
+            MySwal.fire({
+              icon: "error",
+              // title: 'Oops...',
+              text: err?.response?.data?.message,
+            });
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            handleOk();
+            handleCancel()
+          });
+      } else {
+        console.log("i am ok")
+        await updateuser(params)
+          .then((res) => {
+            if (res.data) {
+              setVisible(false);
+              getuserdata()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "User Updated Successfull",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("send error.nnnnn..", err);
+            MySwal.fire({
+              icon: "error",
+              // title: 'Oops...',
+              text: err?.response?.data?.message,
+            });
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            handleOk();
+            handleCancel()
+          });
+      }
+    } catch (error) {
+      console.log(error)
       MySwal.fire({
-        icon: 'error',
-        text: 'Email already in use',
-        
-      })
-    })
-  }
- const addMutaion = useMutation(createUser,{
-  
-  onSuccess:()=>{
-    console.log("succes");
-    queryClient.invalidateQueries(["Aya"])
-  }
- })
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    if (editData) {
-      handleUploadImage();
-    } else {
-      addMutaion.mutate()
-      // createUser();
-      // handleUploadImage();
+        icon: "error",
+        // title: 'Oops...',
+        text: error?.response,
+      });
+    }
+  };
+
+  const deleteUserdata = async (e) => {
+    console.log(e);
+    try {
+      await deleteUser(e)
+        .then((res) => {
+          if (res.data) {
+            setVisible(false);
+            getuserdata()
+            MySwal.fire({
+              icon: "success",
+              // title: 'Oops...',
+              text: "User Deleted Successful",
+            });
+          }
+        })
+        .catch((err) => {
+          console.log("send error.nnnnn..", err);
+          MySwal.fire({
+            icon: "error",
+            // title: 'Oops...',
+            text: err?.response?.data?.message,
+          });
+        })
+        .finally(() => {
+          MySwal.hideLoading();
+          handleOk();
+          handleCancel()
+        });
+
+    } catch (err) {
+      console.log(err);
     }
   };
   const delteImage = async () => {
-    const desertRef = ref(storage, `aya/${imgName}`);
+    const desertRef = ref(storage, `nurses/${imgName}`);
 
     try {
       const res = await deleteObject(desertRef);
@@ -166,7 +309,7 @@ const Index = () => {
       setPreview("");
       setImgName("");
       setBtnPre(<span>Deleted</span>);
-      await updateDoc(doc(db, "aya", formData.id), { images: {} });
+      await updateDoc(doc(db, "nurses", formData.id), { images: {} });
     } catch (err) {
       console.log(err);
     }
@@ -175,7 +318,7 @@ const Index = () => {
   const addData = async (imageUrl, uid) => {
     // setBtnAdd("disable");
     const url = imageUrl;
-    const newCityRef = collection(db, "aya");
+    const newCityRef = collection(db, "nurses");
     // const {title,fees,address,powerAvail,doctorAvail,}=formData
 
     try {
@@ -184,25 +327,25 @@ const Index = () => {
       });
       console.log(res.id);
 
-      await updateDoc(doc(db, "aya", res.id), {
+      await updateDoc(doc(db, "nurses", res.id), {
         id: res.id,
-        images: { url: imageUrl?imageUrl:"", name:imgUrl!==""?imgUrl.uid:"" },
-      
+        images: { url: imageUrl ? imageUrl : "", name: imgUrl !== "" ? imgUrl.uid : "" },
+
       });
-      queryClient.invalidateQueries(["Aya"]);
+      queryClient.invalidateQueries(["Nurses"]);
       MySwal.fire({
         icon: 'success',
         // title: 'Oops...',
         text: ' Data added Successfull',
-   
+
       })
       setImgUrl("")
       setBtnAdd("primary");
       handleCancel();
-      // router.reload("/aya");
-   
+      // router.reload("/nurses");
 
-   
+
+
       setLoading(false);
     } catch (err) {
       handleCancel();
@@ -211,57 +354,57 @@ const Index = () => {
         icon: 'error',
         title: 'Oops...',
         text: 'Something went wrong!',
-        
+
       })
       setLoading(false)
       handleCancel()
     }
   };
-  const updateDocData= async(docs)=>{
- 
-    try{
-     if (inUpdate) {
-       await updateDoc(doc(db, "aya", formData.id), {
-         images: { url: docs, name: imgUrl.uid },
-       });
-     }
-     handleCancel()
-     queryClient.invalidateQueries(["Aya"])
-     MySwal.fire({
-      icon: 'success',
-      // title: 'Oops...',
-      text: 'Edited Successfull',
- 
-    })
-     setInUpdate(false);
-     
-     handleOk();
-     setEditData(false);
-   
-    
-    }
-  catch(error){
-   console.log(error)
-  }
+  const updateDocData = async (docs) => {
 
- }
+    try {
+      if (inUpdate) {
+        await updateDoc(doc(db, "nurses", formData.id), {
+          images: { url: docs, name: imgUrl.uid },
+        });
+      }
+      handleCancel()
+      queryClient.invalidateQueries(["Nurses"])
+      MySwal.fire({
+        icon: 'success',
+        // title: 'Oops...',
+        text: 'Edited Successfull',
+
+      })
+      setInUpdate(false);
+
+      handleOk();
+      setEditData(false);
+
+
+    }
+    catch (error) {
+      console.log(error)
+    }
+
+  }
   const updateData = async (docs) => {
-    const newCityRef = collection(db, "aya");
+    const newCityRef = collection(db, "nurses");
     // const {title,fees,address,powerAvail,doctorAvail,}=formData
 
     try {
       if (inUpdate) {
-        const desertRef = ref(storage, `aya/${formData.images.name}`);
+        const desertRef = ref(storage, `nurses/${formData.images.name}`);
         const deleteImg = await deleteObject(desertRef);
         // console.log(deleteImg);
       }
-      await updateDoc(doc(db, "aya", formData.id), { ...formData });
-   
-     
+      await updateDoc(doc(db, "nurses", formData.id), { ...formData });
+
+
       updateDocData(docs)
-  
-  
-   
+
+
+
     } catch (err) {
       console.log(err);
       updateDocData(docs)
@@ -269,43 +412,43 @@ const Index = () => {
       //   icon: 'error',
       //   title: 'Oops...',
       //   text: 'Something went wrong!',
-        
+
       // })
       setLoading(false)
       handleCancel()
     }
   };
-  const deleteDocData= async(e)=>{
-    try{
-      const res = await deleteDoc(doc(db, "aya", e.id));
-      queryClient.invalidateQueries(["Aya"]);
+  const deleteDocData = async (e) => {
+    try {
+      const res = await deleteDoc(doc(db, "nurses", e.id));
+      queryClient.invalidateQueries(["Nurses"]);
       console.log(res)
       MySwal.fire({
         icon: 'success',
         // title: 'Oops...',
         text: 'Deleted ',
-   
+
       })
-    }catch(error){
+    } catch (error) {
       console.log(error)
       MySwal.fire({
         icon: 'error',
         // title: 'Oops...',
         text: 'some thing went wrong',
-   
+
       })
     }
   }
   const deleteData = async (e) => {
     console.log(e);
     try {
-      const desertRef = ref(storage, `aya/${e.images.name}`);
+      const desertRef = ref(storage, `nurses/${e.images.name}`);
       const deleteImg = await deleteObject(desertRef);
       deleteDocData(e)
       // console.log(deleteImg);
       setAlertType("error");
-      
-    
+
+
       // console.log(deleteImg);
       setAlertType("error");
       // router.reload("/category");
@@ -322,7 +465,7 @@ const Index = () => {
   };
   const handleUploadImage = async (uid) => {
     setLoading(true);
-    const imgRef = ref(storage, `aya/${imgUrl ? imgUrl.uid : ""}`);
+    const imgRef = ref(storage, `nurses/${imgUrl ? imgUrl.uid : ""}`);
 
     try {
       const res = await uploadBytes(imgRef, imgUrl);
@@ -341,7 +484,7 @@ const Index = () => {
 
   const fetchData = async () => {
     let arr = [];
-    const dbRef = collection(db, "aya");
+    const dbRef = collection(db, "nurses");
     try {
       const res = await getDocs(dbRef);
       res.docs.map((doc) => {
@@ -352,7 +495,7 @@ const Index = () => {
       console.log(error);
     }
   };
-  const { isLoading, data, error } = useQuery(["Aya"], fetchData, {
+  const { isLoading, data, error } = useQuery(["Nurses"], fetchData, {
     staleTime: 60000,
   });
   // console.log(isLoading, data);
@@ -370,26 +513,31 @@ const Index = () => {
 
   const handleCancel = () => {
     setFormData({
-      name: "",
-      perDay: "",
-      perHour:"",
-      discount: "",
-      address: "",
-      email: "",
-      password: "",
-      phone: "",
-      details: "",
-      role:"aya",
-      experience: "",
-      ref:"",
-      lat:"",
-      rgNo:"",
-    speciality:"",
-      long:"",
-      workingAt: "",
-      education: "",
-      id: "",
+      type: null,
+      role: null,
+      full_name: null,
+      email: null,
+      password: null,
+      confirmPassword: null,
+      description: null,
+      discount: null,
+      address: null,
+      city: null,
+      phone: null,
+      is_rehab_employee: null,
+      is_rehab_admin: null,
+      rehab: null,
+      is_super_admin: null,
+      availability: null,
+      details: null,
+      dob: null,
+      education: null,
+      experience: null,
       gender: "male",
+      hospital: null,
+      emergency: null,
+      perHour: null,
+      perDay: null,
       images: {
         url: "",
         name: "",
@@ -415,7 +563,7 @@ const Index = () => {
         height={95}
         alt="image"
       />
-    
+
     </div>
   ) : preview == "" ? (
     <div>
@@ -431,7 +579,7 @@ const Index = () => {
         height={95}
         alt="image"
       />
- 
+
     </div>
   );
 
@@ -463,22 +611,22 @@ const Index = () => {
     {
       title: (
         <div className="flex items-center justify-center space-x-4">
-         
+
           {/* <Image
             src={"/images/sort.svg"}
             width={20}
             height={20}
          
           /> */}
-           <span className="text-base font-poppins font-medium">#</span>
+          <span className="text-base font-poppins font-medium">#</span>
         </div>
       ),
       dataIndex: "no",
       sorter: (a, b) => a.age - b.age,
-      render: (_, record,index) => (
+      render: (_, record, index) => (
         <div className="w-full flex items-center justify-center">
           <span className="text-base font-poppins font-medium text-[#474747]">
-            {index+1}
+            {index + 1}
           </span>
         </div>
       ),
@@ -486,14 +634,14 @@ const Index = () => {
     {
       title: (
         <div className="flex items-center space-x-4">
-             <Image
+          <Image
             src={"/images/sort.svg"}
             width={20}
             height={20}
             style={{ marginLeft: "8px" }}
           />
           <span className="text-base font-poppins font-medium">Image</span>
-       
+
         </div>
       ),
       dataIndex: "date",
@@ -509,7 +657,7 @@ const Index = () => {
                   className="flex items-center justify-center"
                 /> */}
           <Image
-            src={record.images?record.images.url:''}
+            src={record.images ? record.images.url : ''}
             alt={record.name}
             width={40}
             height={40}
@@ -533,11 +681,11 @@ const Index = () => {
       dataIndex: "name",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.name;
-        return record?.name ? (
+        let short = record.full_name;
+        return record?.full_name ? (
           <div className="flex items-center w-[160px] justify-center space-x-2">
             <span className="text-sm font-poppins text-clip font-medium text-[#474747]">
-              {record.name ? short.slice(0, 50) : "NA"}
+              {record.full_name ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         ) : (
@@ -563,12 +711,44 @@ const Index = () => {
       render: (_, record) => {
         return record?.gender ? (
           <div className="flex items-center justify-center  space-x-2">
-          {record.gender=="male"?
-             <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
-         :
-         <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
+            {record.gender == "male" ?
+              <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
+              :
+              <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
             }
-          
+
+          </div>
+        ) : (
+          "N/A"
+        );
+      },
+    },
+    {
+      title: (
+        <div className="flex items-center space-x-4">
+          <Image
+            src={"/images/sort.svg"}
+            width={20}
+            height={20}
+            style={{ marginLeft: "8px" }}
+          />
+          <span className="text-base font-poppins font-medium">Availability </span>
+        </div>
+      ),
+      dataIndex: "provider",
+      sorter: (a, b) => a.age - b.age,
+      render: (_, record) => {
+        return record?.gender ? (
+          <div className="flex items-center justify-center  space-x-2">
+            {record?.availability == "" ? (
+              <div className="w-[60px] py-1 bg-[#e05a5a] text-center text-[#f3f8f3]">
+                No
+              </div>
+            ) : (
+              <div className="w-[60px] py-1 bg-[#5af79b] text-center text-[#8472CA]">
+                Yes
+              </div>
+            )}
           </div>
         ) : (
           "N/A"
@@ -585,13 +765,13 @@ const Index = () => {
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.details;
+        let short = record.description;
 
         return (
           <div className=" flex items-center w-[160px] justify-center">
             <span className="text-sm  text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              {record.details ? short.slice(0, 50) : "NA"}
+              {record.description ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         );
@@ -601,7 +781,7 @@ const Index = () => {
       title: (
         <div className="flex items-center  justify-center  w-[160px] space-x-4">
           <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Fees/Day</span>
+          <span className="text-base font-poppins font-medium">Fees</span>
         </div>
       ),
       dataIndex: "status",
@@ -609,24 +789,7 @@ const Index = () => {
       render: (_, record) => (
         <div className=" flex items-center w-[160px] justify-center">
           <span className="mx-auto text-sm font-poppins font-normal text-[black]  py-1">
-            {record?.perDay }
-          </span>
-        </div>
-      ),
-    },
-    {
-      title: (
-        <div className="flex items-center  justify-center  w-[160px] space-x-4">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Fees/Hour</span>
-        </div>
-      ),
-      dataIndex: "status",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className=" flex items-center w-[160px] justify-center">
-          <span className="mx-auto text-sm font-poppins font-normal text-[black]  py-1">
-            {record?.perHour }
+            {record.fees + "" + "$"}
           </span>
         </div>
       ),
@@ -679,7 +842,7 @@ const Index = () => {
       title: (
         <div className="flex items-center space-x-4 justify-center w-[160px]">
           <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Medial Registation No</span>
+          <span className="text-base font-poppins font-medium">Specialization</span>
         </div>
       ),
       dataIndex: "payment",
@@ -688,12 +851,31 @@ const Index = () => {
         <div className="w-full flex items-center  justify-center">
           {
             <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record?.rgNo}
+              {record?.role}
             </span>
           }
         </div>
       ),
     },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Medial Registation No</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record?.rgNo}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
     {
       title: (
         <div className="flex items-center space-x-4 justify-center w-[160px]">
@@ -713,7 +895,6 @@ const Index = () => {
         </div>
       ),
     },
-
     {
       title: (
         <div className="flex items-center space-x-4 justify-center w-[160px]">
@@ -737,27 +918,8 @@ const Index = () => {
       title: (
         <div className="flex items-center space-x-4 justify-center w-[160px]">
           <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Specialization</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex items-center  justify-center">
-          {
-            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record?.speciality}
-            </span>
-          }
-        </div>
-      ),
-    },
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
           <span className="text-base font-poppins font-medium">
-            Working At
+            Working at
           </span>
         </div>
       ),
@@ -767,50 +929,50 @@ const Index = () => {
         <div className="w-full flex items-center  justify-center">
           {
             <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record.workingAt}
+              {record.hospital}
             </span>
           }
         </div>
       ),
     },
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Latitude</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex items-center  justify-center">
-          {
-            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record?.lat?record?.lat : "NA"}
-            </span>
-          }
-        </div>
-      ),
-    },
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Longitude</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex items-center  justify-center">
-          {
-            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record?.long?record?.long:"NA"}
-            </span>
-          }
-        </div>
-      ),
-    },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Latitude</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record.lat}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Longitude</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record.long}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
     {
       title: (
         <div className="flex items-center space-x-4">
@@ -849,7 +1011,7 @@ const Index = () => {
                   label: (
                     <Button
                       onClick={() => {
-                        deleteData(record);
+                        deleteUserdata(record)
                       }}
                       danger
                     >
@@ -891,7 +1053,7 @@ const Index = () => {
   const onChange = (pagination, filters, sorter, extra) => {
     console.log("params", pagination, filters, sorter, extra);
   };
-  // console.log(typeof headings.length.toString());
+  console.log(typeof headings.length.toString());
   return (
     <div className="flex flex-col bg-white space-y-6">
       <div className="flex justify-between items-center">
@@ -908,234 +1070,264 @@ const Index = () => {
       </div>
       <Modal
         open={visible}
-        title="Add Aya"
+        title="Add nurses"
         onOk={handleOk}
         onCancel={handleCancel}
         footer={false}
-        // style={{overflowY:"scroll"}}
+      // style={{overflowY:"scroll"}}
       >
         <form onSubmit={handleFormSubmit}>
           <div className="grid grid-cols-12 gap-x-4 gap-y-1">
-          <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md   ">Name</label>
-                </div>
-  
-                <Input
+            <div className=" w-full  col-span-6  ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md   ">Name</label>
+              </div>
+
+              <Input
                 autoComplete="off"
-                  type="text"
-                  required
-                  className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
-                  placeholder="Name"
-                  value={formData.name}
-                  name="name"
-                  onChange={handleFormChange}
-                />
+                type="text"
+                required
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="Enter Title"
+                value={formData.full_name}
+                name="full_name"
+                onChange={handleFormChange}
+              />
+            </div>
+            {/* <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md   ">Medical Registration No</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md   ">Medical Registration No</label>
-                </div>
-  
-                <Input
+
+              <Input
                 autoComplete="off"
-                  type="text"
-                  required
-                  className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
-                  placeholder="Registration No"
-                  value={formData.rgNo}
-                  name="rgNo"
-                  onChange={handleFormChange}
-                />
+                type="text"
+                required
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="Registration No"
+                value={formData.rgNo}
+                name="rgNo"
+                onChange={handleFormChange}
+              />
+            </div> */}
+            {/* <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md   ">Specialization</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md   ">Specialization</label>
-                </div>
-  
-                <Input
+
+              <Input
                 autoComplete="off"
-                  type="text"
-                  required
-                  className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
-                  placeholder="Specialization"
-                  value={formData.speciality}
-                  name="speciality"
-                  onChange={handleFormChange}
-                />
+                type="text"
+                required
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="Specialization"
+                value={formData.speciality}
+                name="speciality"
+                onChange={handleFormChange}
+              />
+            </div> */}
+            <div className=" col-span-6 w-full md:col-span-6">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Fees/Day</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "147px" }}>
-                  <label className="text-md">Fees/Day</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  required
-                  type="number"
-                  className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
-                  placeholder="per/day"
-                  value={formData.perDay}
-                  name="perDay"
-                  onChange={handleFormChange}
-                />
+                required
+                type="number"
+                className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
+                placeholder="fees/Day"
+                value={formData.perDay}
+                name="perDay"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className=" col-span-6 md:col-span-6">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Fees/Hour</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md">Fees/Hour</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  required
-                  type="number"
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="fees/hour"
-                  value={formData.perHour}
-                  name="perHour"
-                  onChange={handleFormChange}
-                />
+                required
+                type="number"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="fees/Hour"
+                value={formData.perHour}
+                name="perHour"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Discount</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md">Discount</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  type="number"
-                  className="py-1 px-2 outline-none border-b w-full  border-gray rounded-md"
-                  placeholder="2 %"
-                  value={formData.discount}
-                  name="Discount"
-                  onChange={handleFormChange}
-                />
+                type="number"
+                className="py-1 px-2 outline-none border-b w-full  border-gray rounded-md"
+                placeholder="2%"
+                value={formData.discount}
+                name="discount"
+                onChange={handleFormChange}
+              />
+            </div>
+
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Experience</label>
               </div>
-  
-             
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md">Experience</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  required
-                  type="text"
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Experience"
-                  value={formData.experience}
-                  name="experience"
-                  onChange={handleFormChange}
-                />
+                required
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Experience"
+                value={formData.experience}
+                name="experience"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Education</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "147px" }}>
-                  <label className="text-md">Education</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  type="text"
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Education"
-                  value={formData.education}
-                  name="education"
-                  onChange={handleFormChange}
-                />
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Education"
+                value={formData.education}
+                name="education"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Email</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md">Email</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  type="Email"
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="jhon@abc.com"
-                  value={formData.email}
-                  name="email"
-                  onChange={handleFormChange}
-                />
+                type="email"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="jhon@abc.com"
+                value={formData.email}
+                name="email"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">Password</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "147px" }}>
-                  <label className="text-md">Password</label>
-                </div>
-                <Input.Password
+              <Input.Password
                 autoComplete="off"
-                  minLength='6'
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Password"
-                  value={formData.password}
-                  name="password"
-                  onChange={handleFormChange}
-                />
+
+                minLength='6'
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="******"
+                value={formData.password}
+                name="password"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="text-md">phone</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md">Phone</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  type="tel"
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Phone"
-                  value={formData.phone}
-                  name="phone"
-                  onChange={handleFormChange}
-                />
+                type="text"
+                className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                placeholder="444-222-444"
+                value={formData.phone}
+                name="phone"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+            <div style={{ width: "170px" }}>
+                <label className="text-md">Gender</label>
               </div>
-              <div className="col-span-6 ">
-                <div >
-                  <label className="text-md">Gender</label>
+                  <select
+                    className="  py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleFormChange}
+                    placeholder="Gender"
+                  >
+                    <option defaultChecked className="py-2" value="male">
+                      Male
+                    </option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
-                <div>
-                <Select
-                    className="w-full rounded-md text-black"
-                  name="gender"
-                  placeholder="Gender"
-                  onChange={handleGenderChange}
-                >
-                  <Select.Option defaultChecked value="male">
-                    Male
-                  </Select.Option>
-                  <Select.Option value="female">Female</Select.Option>
-                  <Select.Option value="other">Other</Select.Option>
-                </Select>
-                </div>
+            <div className="col-span-6  ">
+              <div style={{ width: "170px" }}>
+                <label className="">Working At</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md">Working At</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  required
-                  type="text"
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Working at"
-                  value={formData.workingAt}
-                  name="workingAt"
-                  onChange={handleFormChange}
-                />
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="working at"
+                value={formData.hospital}
+                name="hospital"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="">Address</label>
               </div>
-              <div className="col-span-6 ">
-                <div style={{ width: "147px" }}>
-                  <label className="text-md">Address</label>
-                </div>
-                <Input
+              <Input
                 autoComplete="off"
-                  required
-                  type="text"
-                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                  placeholder="Address"
-                  value={formData.address}
-                  name="address"
-                  onChange={handleFormChange}
-                />
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.address}
+                name="address"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="">City</label>
               </div>
-              <div className="col-span-6 ">
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.city}
+                name="city"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className=""> Availability Yes/No
+                </label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.availability}
+                name="availability"
+                onChange={handleFormChange}
+              />
+            </div>
+            {/* <div className="col-span-6 ">
               <div style={{ width: "170px" }}>
                 <label className="text-md">Latitude</label>
               </div>
               <Input
-              autoComplete="off"
+                autoComplete="off"
                 required
                 type="text"
                 className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
@@ -1146,12 +1338,12 @@ const Index = () => {
               />
             </div>
             <div className="col-span-6 ">
-              <div style={{ width: "147px" }}>
+              <div style={{ width: "170px" }}>
                 <label className="text-md">Longitude</label>
               </div>
               <Input
-              autoComplete="off"
-              required
+                autoComplete="off"
+                required
                 type="text"
                 className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                 placeholder="-245.00"
@@ -1159,90 +1351,87 @@ const Index = () => {
                 name="long"
                 onChange={handleFormChange}
               />
-            </div>
-              <div className="col-span-12  ">
-                <div style={{ width: "170px" }}>
-                  <label className="text-md ">Details</label>
-                </div>
-                <div className="  w-full">
-                  <TextArea
-                    rows="3"
-                    type="text"
-                    className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
-                    placeholder="Enter Details Here"
-                    value={formData.details}
-                    name="details"
-                    onChange={handleFormChange}
-  
-                  />
-                </div>
+            </div> */}
+            <div className="col-span-12  ">
+              <div style={{ width: "180px" }}>
+                <label className=" ">Details</label>
               </div>
-  
-              <div className="col-span-6 mt-4">
-                <Form.Item
-                  label="Image"
+              <div className="  w-full">
+                <TextArea
+                  rows="2"
+                  type="text"
+                  className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                  placeholder="Enter Details Here"
+                  value={formData.description}
+                  name="description"
+                  onChange={handleFormChange}
+                />
+              </div>
+            </div>
+
+            <div className="col-span-6 mt-4">
+              <Form.Item
+                label="Image"
+                name="image"
+                valuePropName="fileList"
+                getValueFromEvent={(e) => {
+                  if (Array.isArray(e)) {
+                    return e;
+                  }
+                  setImgUrl(e.file);
+                  // handleUploadImage()
+                  let b = URL.createObjectURL(e.file);
+                  setPreview(b);
+                  setInUpdate(true);
+                  console.log(arr, "arr");
+                  return e && e.fileList;
+                }}
+              >
+                <Upload
+                  className="ml-11"
                   name="image"
-                  valuePropName="fileList"
-                  getValueFromEvent={(e) => {
-                    if (Array.isArray(e)) {
-                      return e;
-                    }
-                    setImgUrl(e.file);
-                    console.log(e.file)
-                    // handleUploadImage()
-                    let b = URL.createObjectURL(e.file);
-                    setPreview(b);
-                    setInUpdate(true);
-                    console.log(arr, "arr");
-                    return e && e.fileList;
-                  }}
+                  listType="picture-card"
+                  showUploadList={false}
+                  beforeUpload={() => false}
                 >
-                  <Upload
-                  className="ml-12"
-                    name="image"
-                    listType="picture-card"
-                    showUploadList={false}
-                    beforeUpload={() => false}
-                  >
-                    {uploadButton}
-                  </Upload>
-                </Form.Item>
-              
-              </div>
-              <div>
-                {previewArr.length
-                  ? previewArr.map((doc, index) => {
-                      return (
-                        <div key={index}>
-                          <Image src={doc} height={25} width={25} alt="img" />
-                        </div>
-                      );
-                    })
-                  : ""}
-              </div>
+                  {uploadButton}
+                </Upload>
+              </Form.Item>
             </div>
-            <div className="flex justify-center col-span-12">
-              {loading ? (
-                <div className="h-24 w-24 flex justify-center">
-                  <Spin />
-                </div>
-              ) : editData ? (
-                <Button
-                  type="primary"
-                  style={{ width: "120px" }}
-                  htmlType="submit"
-                >
-                  Update
-                </Button>
-              ) : (
-                <Button
-                  type={btnAdd}
-                  style={{ width: "120px" }}
-                  htmlType="submit"
-                >
-                  Add
-                </Button>
-              )}
+            <div>
+              {previewArr.length
+                ? previewArr.map((doc, index) => {
+                  return (
+                    <div key={index}>
+                      <Image src={doc} height={25} width={25} alt="img" />
+                    </div>
+                  );
+                })
+                : ""}
+            </div>
+          </div>
+          <div className="flex justify-center col-span-12">
+            {loading ? (
+              <div className="h-24 w-24 flex justify-center">
+                <Spin />
+              </div>
+            ) : editData ? (
+              <Button
+                type="primary"
+                style={{ width: "120px" }}
+                htmlType="submit"
+              >
+                Update
+              </Button>
+            ) : (
+              <Button
+                type={btnAdd}
+                style={{ width: "120px" }}
+                htmlType="submit"
+              >
+                Add
+              </Button>
+            )}
           </div>
         </form>
 
@@ -1251,11 +1440,10 @@ const Index = () => {
       <div className="">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={userData}
           onChange={onChange}
           id="newOrders"
           scroll={{ x: 900 }}
-          key={data?.id}
         />
       </div>
     </div>

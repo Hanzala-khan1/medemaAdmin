@@ -7,8 +7,9 @@ import {
   Alert,
   Spin,
   Popconfirm,
+  Pagination,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import avatar from "../../../public/images/user.png";
 import Head from "next/head";
 
@@ -20,10 +21,10 @@ import {
   DeleteFilled
 } from "@ant-design/icons";
 import React from "react";
-import { Modal, Form, Input, Button, Upload, Radio ,Select,Image} from "antd";
+import { Modal, Form, Input, Button, Upload, Radio, Select, Image } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-import {deleteUser} from 'firebase/auth'
-import { db, storage,auth } from "@/config/firebase";
+import { deleteUser } from 'firebase/auth'
+import { db, storage, auth } from "@/config/firebase";
 import {
   addDoc,
   collection,
@@ -33,7 +34,7 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { useQuery ,useQueryClient} from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import {
   ref,
@@ -46,20 +47,16 @@ import { useRef } from "react";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { addRehab, userSignup } from "@/services";
+import { addRehab, deleteRehab, UpdateRehab, userSignup } from "@/services";
+import { convertEmptyStringToNull } from "@/lib/commonfunction";
+import { BASE_URL } from "@/services/endpoints";
+import axios from "axios";
 const { TextArea } = Input;
 
 const Index = () => {
   const MySwal = withReactContent(Swal);
-  const [visibleAlert, setVisibleAlert] = useState(false);
-  const [alertText, setAlertText] = useState("");
-  const [alertType, setAlertType] = useState("success");
   const [imgUrl, setImgUrl] = useState([]);
-  const [imgUrl1, setImgUrl1] = useState("");
-  const [imgUrl2, setImgUrl2] = useState("");
-  const [uplodedUrl, setUploadedUrl] = useState("");
-  const [uplodedUrl1, setUploadedUrl1] = useState("");
-  const [uplodedUrl2, setUploadedUrl2] = useState("");
+  const [Rehabdata, setRehabdata] = useState([]);
   const [preview, setPreview] = useState([]);
   const [preview1, setPreview1] = useState("");
   const [preview2, setPreview2] = useState("");
@@ -67,22 +64,18 @@ const Index = () => {
   const [visible, setVisible] = useState(false);
   const [form] = Form.useForm();
   const router = useRouter();
-  const [URLs,setURLs]=useState([])
+  const [URLs, setURLs] = useState([])
   const [editData, setEditData] = useState(false);
   const [imgName, setImgName] = useState("");
   const [imgName1, setImgName1] = useState("");
   const [imgName2, setImgName2] = useState("");
   const [btnAdd, setBtnAdd] = useState("primary");
   const [loading, setLoading] = useState(false);
-  const [arr, setarr] = useState([]);
-  const [inUpdate, setInUpdate] = useState(false);
-  const [inUpdate1, setInUpdate1] = useState(false);
-  const [inUpdate2, setInUpdate2] = useState(false);
   var previewArr = [];
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({
     Name: "",
-    full_name:"",
+    full_name: "",
     email: "",
     password: "",
     address: "",
@@ -92,8 +85,8 @@ const Index = () => {
     dob: "",
     education: "",
     gender: "",
-    perHour:"",
-    perDay:"",
+    perHour: "",
+    perDay: "",
     images: "",
     lat: "",
     long: "",
@@ -101,15 +94,56 @@ const Index = () => {
     discount: ""
   });
 
+  useEffect(() => {
+    getRehabData()
+  }, [])
+
   const handleFormChange = (event) => {
     const { name, value } = event.target;
-    if(name=="name"){
+    if (name == "name") {
       const val = value?.toLowerCase();
       setFormData((prevFormData) => ({ ...prevFormData, [name]: val }));
-    }else{
-    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
-  }
+    } else {
+      setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+    }
   };
+
+  let getRehabData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+      // let data = {
+      //   page: 1, 
+      //   limit: 20, 
+      // };
+      let url = `${BASE_URL}/user/getAllRehabLists`;
+
+      // const userCount = await axios.get(url, data,{ headers });
+      const rehablist = await axios({
+        method: 'post',
+        url: url,
+        data: {
+          page: 1,
+          limit: 20,
+        }
+      });;
+      if (rehablist.data.userList) {
+        setRehabdata(rehablist.data.userList.results);
+      }
+      else {
+        console.log("no rehab Found")
+      }
+      // getRehabData()
+
+    } catch (error) {
+      console.log("err..", error);
+      MySwal.hideLoading(); // Assuming MySwal is for a loading indicator
+    }
+  };
+
 
   // const handleDoctorChange = () => {
   //   setFormData((e) => ({ ...e, doctorAvail: true }));
@@ -120,76 +154,105 @@ const Index = () => {
   // const handleParkingChange = () => {
   //   setFormData((e) => ({ ...e, parkingFacility: true }));
   // };
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     try {
       e.preventDefault();
-      // if (!validatePassword()) {
-      //   return;
-      // }
-      // let { confirmpassword, confirmPassword, username, ...data } = formData
-console.log("formdatatatattatatatta",formData)
-      let params = formData
-      // console.log(params)
-      // MySwal.showLoading();
-      addRehab(params)
-        .then((res) => {
-          if (res.data.auth) {
-            console.log("resdata...........", res.data)
+      console.log("nenennenenenenen", formData)
+      let params = convertEmptyStringToNull(formData)
+      if (!editData) {
+        console.log("herererererreerre")
+        await addRehab(params)
+          .then((res) => {
+            console.log("herererererreerre")
+            if (res.data) {
+              setVisible(false);
+              getRehabData()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "Rehab Added Successfull",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("herererererreerre")
+            console.log("send error.nnnnn..", err);
             MySwal.fire({
-              icon: "success",
+              icon: "error",
               // title: 'Oops...',
-              text: " Sign Up Successfull",
+              text: err?.response?.data?.message,
             });
-            router.push("/rehab");
-          }
-        })
-        .catch((err) => {
-          console.log("send error.nnnnn..", err);
-          MySwal.fire({
-            icon: "error",
-            // title: 'Oops...',
-            text: err?.response?.data?.message,
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            // handleOk();
+            // handleCancel()
           });
-        })
-        .finally(() => {
-          MySwal.hideLoading();
-        });
+      } else {
+        console.log("i am ok")
+        await UpdateRehab(params)
+          .then((res) => {
+            if (res.data) {
+              setVisible(false);
+              getRehabData()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "Rehab Updated Successfull",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("send error.nnnnn..", err);
+            MySwal.fire({
+              icon: "error",
+              // title: 'Oops...',
+              text: err?.response?.data?.message,
+            });
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            handleOk();
+            handleCancel()
+          });
+      }
     } catch (error) {
+      console.log(error)
       MySwal.fire({
         icon: "error",
         // title: 'Oops...',
-        text: error?.response?.data?.message,
-      });  
-   }
+        text: error?.response,
+      });
+    }
   };
-  const updateSingleDoc=async()=>{
-try{
- await updateDoc(doc(db, "rehab", formData.id), { images: [...formData.images] });
-}catch(error){
-  console.log(error)
-}
+  const updateSingleDoc = async () => {
+    try {
+      await updateDoc(doc(db, "rehab", formData.id), { images: [...formData.images] });
+    } catch (error) {
+      console.log(error)
+    }
   }
-  const deleteSingleImage= async(name)=>{
-    let imgArray= [];
+  const deleteSingleImage = async (name) => {
+    let imgArray = [];
     const desertRef = ref(storage, `rehab/${name}`);
-    
-    let item = formData.images.filter((doc)=>{
-      return doc.name !== name 
-})
-console.log(item)
-    
-     setFormData((prev)=>({...prev,images:item}))
-    try{
+
+    let item = formData.images.filter((doc) => {
+      return doc.name !== name
+    })
+    console.log(item)
+
+    setFormData((prev) => ({ ...prev, images: item }))
+    try {
       const res = await deleteObject(desertRef);
       console.log(res, "res");
       await updateDoc(doc(db, "rehab", formData.id), { images: [...formData.images] });
 
-     queryClient.invalidateQueries(["rehab"])
-    }catch(error){
-     updateSingleDoc()
-console.log(error)
+      queryClient.invalidateQueries(["rehab"])
+    } catch (error) {
+      updateSingleDoc()
+      console.log(error)
     }
-   
+
   }
   const delteImage = async () => {
     const desertRef = ref(storage, `rehab/${imgName}`);
@@ -271,20 +334,20 @@ console.log(error)
       await updateDoc(doc(db, "rehab", res.id), {
         id: res.id,
         images: URLs
-        
+
       });
       setAlertType("success");
       setAlertText("Data Added SuccessFully");
       setBtnAdd("primary");
-      
+
       MySwal.fire({
         icon: 'success',
         // title: 'Oops...',
         text: ' Data added Successfull',
-   
+
       })
       handleCancel();
-     
+
       setPreview([])
       queryClient.invalidateQueries();
       // router.reload("/rehab");
@@ -303,10 +366,10 @@ console.log(error)
     // const {title,fees,address,powerAvail,doctorAvail,}=formData
 
     try {
-     const res= await updateDoc(doc(db, "rehab", formData.id), {
-        images:[...URLs,...formData.images]
+      const res = await updateDoc(doc(db, "rehab", formData.id), {
+        images: [...URLs, ...formData.images]
       });
-        console.log(res)
+      console.log(res)
 
 
       // setAlertType("success");
@@ -323,54 +386,62 @@ console.log(error)
         icon: 'success',
         // title: 'Oops...',
         text: ' Data added Successfull',
-   
+
       })
       setURLs([]);
       setPreview([]);
-    handleCancel();
-    setLoading(false)
+      handleCancel();
+      setLoading(false)
       // router.reload("/rehab");
     } catch (err) {
-        setLoading(false)
+      setLoading(false)
       console.log(err);
     }
   };
-  const deleteDocData= async(e)=>{
-    try{
+  const deleteDocData = async (e) => {
+    try {
       const res = await deleteDoc(doc(db, "rehab", e.id));
       queryClient.invalidateQueries();
       MySwal.fire({
         icon: 'success',
         // title: 'Oops...',
         text: ' Data deleted successfull',
-   
+
       })
       console.log(res)
-    }catch(error){
+    } catch (error) {
       console.log(error)
     }
   }
   const deleteData = async (e) => {
     console.log(e);
     try {
-      const desertRef = ref(storage, `rehab/${e.images.name}`);
-      const desertRef1 = ref(storage, `rehab/${e.images.name1}`);
-      const desertRef2 = ref(storage, `rehab/${e.images.name2}`);
-      const deleteImg = await deleteObject(desertRef);
-      const deleteImg1 = await deleteObject(desertRef1);
-      const deleteImg2 = await deleteObject(desertRef2);
-     deleteDocData(e)
-      console.log(res);
-      console.log(deleteImg);
-      setAlertType("error");
-      setAlertText("Data Deleted SuccessFully");
-     
-      // router.reload("/category");
-      setURLs([])
-      setVisibleAlert(true);
-      setTimeout(() => {
-        setVisibleAlert(false);
-      }, 5000);
+      await deleteRehab(e)
+        .then((res) => {
+          if (res.data) {
+            setVisible(false);
+            getRehabData()
+            MySwal.fire({
+              icon: "success",
+              // title: 'Oops...',
+              text: "Rehab Deleted Successful",
+            });
+          }
+        })
+        .catch((err) => {
+          console.log("send error.nnnnn..", err);
+          MySwal.fire({
+            icon: "error",
+            // title: 'Oops...',
+            text: err?.response?.data?.message,
+          });
+        })
+        .finally(() => {
+          MySwal.hideLoading();
+          handleOk();
+          handleCancel()
+        });
+
     } catch (err) {
       deleteDocData(e)
       console.log(err);
@@ -381,74 +452,42 @@ console.log(error)
 
     const promises = []
     preview?.map((doc) => {
-        console.log('loop');
+      console.log('loop');
 
-        const sotrageRef = ref(storage, `rehab/${doc.name}`);
+      const sotrageRef = ref(storage, `rehab/${doc.name}`);
 
-        const uploadTask = uploadBytesResumable(sotrageRef, doc.file);
-        promises.push(uploadTask)
-        uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-                const prog = Math.round(
-                    (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                );
-                // setProgress(prog);
-            },
-            (error) => console.log(error),
-            async () => {
-                await getDownloadURL(uploadTask.snapshot.ref).then((downloadURLs) => {
-                    setURLs((prevState )=>( [...prevState, {url:downloadURLs,name:doc.name}]))
-                    console.log("File available at", downloadURLs);
-                });
-            }
-        );
-           
+      const uploadTask = uploadBytesResumable(sotrageRef, doc.file);
+      promises.push(uploadTask)
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const prog = Math.round(
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          );
+          // setProgress(prog);
+        },
+        (error) => console.log(error),
+        async () => {
+          await getDownloadURL(uploadTask.snapshot.ref).then((downloadURLs) => {
+            setURLs((prevState) => ([...prevState, { url: downloadURLs, name: doc.name }]))
+            console.log("File available at", downloadURLs);
+          });
+        }
+      );
+
 
     })
     Promise.all(promises)
-        .then(() => { setPreview([]);
-         editData
-        ? updateData()
-        : addData(id);})
-        .then(err => console.log(err))
-console.log(URLs,'URLS')
+      .then(() => {
+        setPreview([]);
+        editData
+          ? updateData()
+          : addData(id);
+      })
+      .then(err => console.log(err))
+    console.log(URLs, 'URLS')
 
-  
 
-    // const imgRef = ref(storage, `rehab/${imgUrl ? imgUrl.uid : ""}`);
-    // const imgRef1 = ref(storage, `rehab/${imgUrl1 ? imgUrl1.uid : ""}`);
-    // const imgRef2 = ref(storage, `rehab/${imgUrl2 ? imgUrl2.uid : ""}`);
-    // try {
-
- 
-    //     const res = await uploadBytes(imgRef, imgUrl);
-    //     console.log(res, "result");
-    //     const uploadTask = uploadBytesResumable(imgRef, imgUrl);
-    //     const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-    //     const res1 = await uploadBytes(imgRef1, imgUrl1);
-    //     console.log(res1, "result");
-   
-     
-
-      // const uploadTask1 = uploadBytesResumable(imgRef1, imgUrl1);
-      // const downloadURL1 = await getDownloadURL(uploadTask1.snapshot.ref);
-      // const res2 = await uploadBytes(imgRef2, imgUrl2);
-      // console.log(res2, "result");
-      // const uploadTask2 = uploadBytesResumable(imgRef2, imgUrl2);
-      // const downloadURL2 = await getDownloadURL(uploadTask2.snapshot.ref);
-      // console.log("File available at", downloadURL2);
-      // addData();
-    //   setUploadedUrl(downloadURL);
-    //   // setUploadedUrl(downloadURL1);
-    //   // setUploadedUrl(downloadURL2);
-    //   editData
-    //     ? updateData()
-    //     : addData();
-    // } catch (err) {
-    //   console.log(err, "message");
-    //   setLoading(false)
-    // }
   };
 
   const fetchData = async () => {
@@ -482,18 +521,18 @@ console.log(URLs,'URLS')
 
   const handleCancel = () => {
     setFormData({
-      name: "",
+      Name: "",
       discount: "",
       address: "",
       email: "",
-      password:"",
+      password: "",
       long: "",
       lat: "",
       id: "",
-      perDay:"",
-      ref:"",
-      role:"rehab",
-      perHour:"",
+      perDay: "",
+      ref: "",
+      role: "rehab",
+      perHour: "",
       availability: "weekdays",
       unavailability: [],
       description: "",
@@ -517,8 +556,8 @@ console.log(URLs,'URLS')
     handleCancel();
   };
 
-  const uploadButton =  (
- 
+  const uploadButton = (
+
     <div>
       <UploadOutlined />
       <div className="ant-upload-text">Upload</div>
@@ -591,13 +630,13 @@ console.log(URLs,'URLS')
       </Button>
     </div>
   );
-const handledeleteItem=(e)=>{
-  let item = preview.filter((doc)=>{
-        return doc.name !== e 
-  })
-  setPreview(item)
+  const handledeleteItem = (e) => {
+    let item = preview.filter((doc) => {
+      return doc.name !== e
+    })
+    setPreview(item)
 
-}
+  }
   const [current, setCurrent] = useState("mail");
   const onClick = (e) => {
     console.log("click ", e);
@@ -626,22 +665,22 @@ const handledeleteItem=(e)=>{
     {
       title: (
         <div className="flex items-center justify-center space-x-4">
-         
+
           {/* <Image
             src={"/images/sort.svg"}
             width={20}
             height={20}
          
           /> */}
-           <span className="text-base font-poppins font-medium">#</span>
+          <span className="text-base font-poppins font-medium">#</span>
         </div>
       ),
       dataIndex: "no",
       sorter: (a, b) => a.age - b.age,
-      render: (_, record,index) => (
+      render: (_, record, index) => (
         <div className="w-full flex items-center justify-center">
           <span className="text-base font-poppins font-medium text-[#474747]">
-            {index+1}
+            {index + 1}
           </span>
         </div>
       ),
@@ -649,17 +688,17 @@ const handledeleteItem=(e)=>{
     {
       title: (
         <div className="flex items-center space-x-4">
-             <Image
+          <Image
             src={"/images/sort.svg"}
             width={20}
             height={20}
             style={{ marginLeft: "8px" }}
           />
           <span className="text-base font-poppins font-medium">Image</span>
-       
+
         </div>
       ),
-      dataIndex: "date",
+      dataIndex: "created_at",
       render: (_, record) => (
         <div className="w-full flex justify-center items-center">
           {/* <Avatar
@@ -672,7 +711,7 @@ const handledeleteItem=(e)=>{
                   className="flex items-center justify-center"
                 /> */}
           <Image
-            src={record.images?record?.images[0]?.url:''}
+            src={record.images ? record?.images[0]?.url : ''}
             alt={record.name}
             width={40}
             height={40}
@@ -693,14 +732,14 @@ const handledeleteItem=(e)=>{
           <span className="text-base font-poppins font-medium">Name</span>
         </div>
       ),
-      dataIndex: "name",
+      dataIndex: "Name",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.name;
-        return record?.name ? (
+        let short = record.Name;
+        return record?.Name ? (
           <div className="flex items-center w-[160px] justify-center space-x-2">
             <span className="text-sm font-poppins text-clip font-medium text-[#474747]">
-              {record.name ? short.slice(0, 50) : "NA"}
+              {record.Name ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         ) : (
@@ -709,67 +748,67 @@ const handledeleteItem=(e)=>{
       },
     },
 
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Facilities</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex flex-col items-center  justify-center">
-          {
-            <>
-              <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-                24/7 Doctors
-                {record.doctorAvail ? (
-                  <span className="text-green-400 ml-5">
-                    {" "}
-                    <CheckCircleOutlined />
-                  </span>
-                ) : (
-                  <span className="text-red-400 ml-2">
-                    {" "}
-                    <CloseCircleOutlined />
-                  </span>
-                )}
-              </span>
-              <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-                PowerBackup
-                {record.powerBackup ? (
-                  <span className="text-green-400 ml-3">
-                    {" "}
-                    <CheckCircleOutlined />
-                  </span>
-                ) : (
-                  <span className="text-red-400 ml-2">
-                    {" "}
-                    <CloseCircleOutlined />
-                  </span>
-                )}
-              </span>
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Facilities</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex flex-col items-center  justify-center">
+    //       {
+    //         <>
+    //           <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //             24/7 Doctors
+    //             {record.doctorAvail ? (
+    //               <span className="text-green-400 ml-5">
+    //                 {" "}
+    //                 <CheckCircleOutlined />
+    //               </span>
+    //             ) : (
+    //               <span className="text-red-400 ml-2">
+    //                 {" "}
+    //                 <CloseCircleOutlined />
+    //               </span>
+    //             )}
+    //           </span>
+    //           <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //             PowerBackup
+    //             {record.powerBackup ? (
+    //               <span className="text-green-400 ml-3">
+    //                 {" "}
+    //                 <CheckCircleOutlined />
+    //               </span>
+    //             ) : (
+    //               <span className="text-red-400 ml-2">
+    //                 {" "}
+    //                 <CloseCircleOutlined />
+    //               </span>
+    //             )}
+    //           </span>
 
-              <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-                Parking facility
-                {record.parkingFacility ? (
-                  <span className="text-green-400 ml-1">
-                    {" "}
-                    <CheckCircleOutlined />
-                  </span>
-                ) : (
-                  <span className="text-red-400 ml-2">
-                    {" "}
-                    <CloseCircleOutlined />
-                  </span>
-                )}
-              </span>
-            </>
-          }
-        </div>
-      ),
-    },
+    //           <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //             Parking facility
+    //             {record.parkingFacility ? (
+    //               <span className="text-green-400 ml-1">
+    //                 {" "}
+    //                 <CheckCircleOutlined />
+    //               </span>
+    //             ) : (
+    //               <span className="text-red-400 ml-2">
+    //                 {" "}
+    //                 <CloseCircleOutlined />
+    //               </span>
+    //             )}
+    //           </span>
+    //         </>
+    //       }
+    //     </div>
+    //   ),
+    // },
     {
       title: (
         <div className="flex items-center justify-center  w-[160px] space-x-4">
@@ -867,7 +906,7 @@ const handledeleteItem=(e)=>{
         </div>
       ),
     },
-  
+
     {
       title: (
         <div className="flex items-center space-x-4">
@@ -893,11 +932,11 @@ const handledeleteItem=(e)=>{
                         showModal();
                         setFormData(record);
                         // setPreview(record.images);
-                        setImgName(record.images.name);
-                        setPreview1(record.images.url1);
-                        setImgName1(record.images.name1);
-                        setPreview2(record.images.url2);
-                        setImgName2(record.images.name2);
+                        // setImgName(record.images.name);
+                        // setPreview1(record.images.url1);
+                        // setImgName1(record.images.name1);
+                        // setPreview2(record.images.url2);
+                        // setImgName2(record.images.name2);
                         setEditData(true);
                       }}
                     >
@@ -986,7 +1025,7 @@ const handledeleteItem=(e)=>{
               </div>
 
               <Input
-              autoComplete="off"
+                autoComplete="off"
                 type="text"
                 required
                 className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
@@ -1001,7 +1040,7 @@ const handledeleteItem=(e)=>{
                 <label className="text-lg">Fees/Day</label>
               </div>
               <Input
-              autoComplete="off"
+                autoComplete="off"
                 required
                 type="number"
                 className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
@@ -1016,7 +1055,7 @@ const handledeleteItem=(e)=>{
                 <label className="text-lg">Fees/Hour</label>
               </div>
               <Input
-              autoComplete="off"
+                autoComplete="off"
                 required
                 type="number"
                 className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
@@ -1031,8 +1070,8 @@ const handledeleteItem=(e)=>{
                 <label className="text-lg">Discount</label>
               </div>
               <Input
-              autoComplete="off"
-                type="number"
+                autoComplete="off"
+                type="text"
                 className=" px-2 outline-none border-b w-full  border-gray rounded-md"
                 placeholder="2 %"
                 value={formData.discount}
@@ -1041,13 +1080,13 @@ const handledeleteItem=(e)=>{
               />
             </div>
 
-           
+
             <div className="col-span-6 flex space-x-2">
               <div style={{ width: "170px" }}>
                 <label className="text-lg">Latitude</label>
               </div>
               <Input
-              autoComplete="off"
+                autoComplete="off"
                 required
                 type="text"
                 className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
@@ -1062,8 +1101,8 @@ const handledeleteItem=(e)=>{
                 <label className="text-lg">Longitude</label>
               </div>
               <Input
-              autoComplete="off"
-              required
+                autoComplete="off"
+                required
                 type="text"
                 className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                 placeholder="-245.00"
@@ -1072,12 +1111,12 @@ const handledeleteItem=(e)=>{
                 onChange={handleFormChange}
               />
             </div>
-              <div className="col-span-6 flex space-x-2">
+            <div className="col-span-6 flex space-x-2">
               <div style={{ width: "170px" }}>
                 <label className="text-lg">Address</label>
               </div>
               <Input
-              autoComplete="off"
+                autoComplete="off"
                 required
                 type="text"
                 className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
@@ -1087,14 +1126,14 @@ const handledeleteItem=(e)=>{
                 onChange={handleFormChange}
               />
             </div>
-            
+
             <div className="col-span-12 flex ">
               <div style={{ width: "170px" }}>
                 <label className="text-[17px] ">Description</label>
               </div>
               <div className=" -ml-8 w-full">
                 <TextArea
-                required
+                  required
                   rows="2"
                   type="text"
                   className="py-2 px-2 outline-none w-full border-b  border-gray rounded-md"
@@ -1105,16 +1144,17 @@ const handledeleteItem=(e)=>{
                 />
               </div>
             </div>
-            <div className=" col-span-12 text-black mt-4 text-lg">
-            Rehab Admin Info:
-          </div>
-          <div className="col-span-6 flex space-x-2">
+            {!editData ? (<>
+              <div className=" col-span-12 text-black mt-4 text-lg">
+                Rehab Admin Info:
+              </div>
+              <div className="col-span-6 flex space-x-2">
                 <div style={{ width: "170px" }}>
                   <label className="text-lg">Full Name</label>
                 </div>
                 <Input
-                autoComplete="off"
-                required
+                  autoComplete="off"
+                  required
                   type="text"
                   className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                   placeholder="Full Name"
@@ -1128,8 +1168,8 @@ const handledeleteItem=(e)=>{
                   <label className="text-lg">Email</label>
                 </div>
                 <Input
-                autoComplete="off"
-                required
+                  autoComplete="off"
+                  required
                   type="email"
                   className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                   placeholder="jhon@abc.com"
@@ -1143,8 +1183,8 @@ const handledeleteItem=(e)=>{
                   <label className="text-lg">Password</label>
                 </div>
                 <Input
-                autoComplete="off"
-                required
+                  autoComplete="off"
+                  required
                   type="password"
                   className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                   placeholder="password"
@@ -1158,8 +1198,8 @@ const handledeleteItem=(e)=>{
                   <label className="text-lg">Phone</label>
                 </div>
                 <Input
-                autoComplete="off"
-                required
+                  autoComplete="off"
+                  required
                   type="tel"
                   className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                   placeholder="jhon@abc.com"
@@ -1168,7 +1208,8 @@ const handledeleteItem=(e)=>{
                   onChange={handleFormChange}
                 />
               </div>
-              {/* <div className="col-span-6 flex space-x-2">
+            </>) : ""}
+            {/* <div className="col-span-6 flex space-x-2">
                 <div style={{ width: "170px" }}>
                   <label className="text-lg">Email</label>
                 </div>
@@ -1191,7 +1232,7 @@ const handledeleteItem=(e)=>{
                 getValueFromEvent={(e) => {
                   if (Array.isArray(e)) {
                     setImgUrl(e)
-                    console.log(e,"eeee")
+                    console.log(e, "eeee")
                     return e;
                   }
 
@@ -1199,20 +1240,20 @@ const handledeleteItem=(e)=>{
                   // if (e?.fileList?.length!==0){
                   //   e.fileList?.map((doc)=>{
                   //     let b;
-                     
+
                   //        b= URL.createObjectURL(doc[0]);
-                      
-                    
+
+
                   //   console.log(b,"neeeee")
                   //   })
                   // }
                   // handleUploadImage()
                   let b = URL.createObjectURL(e.file);
                   console.log(b)
-              
-                  setPreview((prev)=>([...prev,{name:e?.file?.uid,src:b,file:e?.file}]))
-                 
-                 
+
+                  setPreview((prev) => ([...prev, { name: e?.file?.uid, src: b, file: e?.file }]))
+
+
                   // setPreview(b);
                   // setInUpdate(true);
                   console.log(e?.fileList, "arr");
@@ -1229,50 +1270,50 @@ const handledeleteItem=(e)=>{
                 </Upload>
               </Form.Item>
             </div>
-           
-              {
-                 preview!==[]?
-                 preview?.map((doc,index)=>{
+
+            {
+              preview.length ?
+                preview?.map((doc, index) => {
                   console.log(doc)
-                  let mts = 12 ;
-                  if(index >2 ){
+                  let mts = 12;
+                  if (index > 2) {
                     mts = 0
                   }
-                 return(
-                  <div key={index} className={` col-span-3 ${index>2? "mt-0":"mt-8"}  bg-white   h-[100px] w-[100px]`}>
-                 
-                  <div ><Image src={doc?.src} height={100} width={100} className="h-[100px] w-[100px] object-cover"  alt="img" /></div>
-                  <div className=" h-6 w-6   relative -top-[100px] -right-[80px]"><Button onClick={()=>{ handledeleteItem(doc?.name)}}>X</Button></div>
-                  </div>
-                 )
-                 })
-                 :""
-              }
-            
-              {
-                editData?
-                formData?.images?.map((doc,index)=>{
-                  return(
-                    <div key={index} className={` col-span-3 ${index>2? "mt-0":"mt-8"}  bg-white   h-[100px] w-[100px]`}>
-                 
-                    <div ><Image src={doc?.url} height={100} width={100} className="h-[100px] w-[100px] object-cover"  alt="img" /></div>
-                    <div className=" h-6 w-4   relative -top-[100px] -right-[80px]"><Button onClick={()=>{ deleteSingleImage(doc?.name)}} className="w-4 text-red-600 text-center flex justify-center items-center"><DeleteFilled/></Button></div>
+                  return (
+                    <div key={index} className={` col-span-3 ${index > 2 ? "mt-0" : "mt-8"}  bg-white   h-[100px] w-[100px]`}>
+
+                      <div ><Image src={doc?.src} height={100} width={100} className="h-[100px] w-[100px] object-cover" alt="img" /></div>
+                      <div className=" h-6 w-6   relative -top-[100px] -right-[80px]"><Button onClick={() => { handledeleteItem(doc?.name) }}>X</Button></div>
+                    </div>
+                  )
+                })
+                : ""
+            }
+
+            {
+              editData ?
+                formData?.images?.map((doc, index) => {
+                  return (
+                    <div key={index} className={` col-span-3 ${index > 2 ? "mt-0" : "mt-8"}  bg-white   h-[100px] w-[100px]`}>
+
+                      <div ><Image src={doc?.url} height={100} width={100} className="h-[100px] w-[100px] object-cover" alt="img" /></div>
+                      <div className=" h-6 w-4   relative -top-[100px] -right-[80px]"><Button onClick={() => { deleteSingleImage(doc?.name) }} className="w-4 text-red-600 text-center flex justify-center items-center"><DeleteFilled /></Button></div>
                     </div>
                   )
                 })
                 :
                 ""
-              }
-       
+            }
+
             <div>
               {previewArr.length
                 ? previewArr.map((doc, index) => {
-                    return (
-                      <div key={index}>
-                        <Image src={doc} height={25} width={25} alt="img" />
-                      </div>
-                    );
-                  })
+                  return (
+                    <div key={index}>
+                      <Image src={doc} height={25} width={25} alt="img" />
+                    </div>
+                  );
+                })
                 : ""}
             </div>
           </div>
@@ -1306,10 +1347,19 @@ const handledeleteItem=(e)=>{
       <div className="">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={Rehabdata}
           onChange={onChange}
           id="newOrders"
           scroll={{ x: 900 }}
+          Pagination={{
+            showSizeChanger: true,  // Show options to change page size
+            showQuickJumper: true,  // Show quick jump to page functionality
+            showTotal: (total, range) => `Showing ${range[0]}-${range[1]} of ${total} items`,
+            pageSizeOptions: ['10', '20', '50', '100'], // Options for page size
+            defaultPageSize: 10,  // Default page size
+            // You can also specify other pagination properties as needed
+            // For example: current, pageSize, total, onChange, etc.
+          }}
         />
       </div>
     </div>

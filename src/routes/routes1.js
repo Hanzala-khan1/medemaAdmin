@@ -21,19 +21,19 @@ const routes = [
     path: "/orders/new-orders",
     icon: <Image src={"/images/new_order_icon.svg"} width={12} height={12} />,
     title: "New orders",
-    roles: [ "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor"],
+    roles: [ "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor",'admin'],
   },
   {
     path: "/rehab-order",
     icon: <Image src={"/images/new_order_icon.svg"} width={12} height={12} />,
     title: "New orders",
-    roles: ['RehabAdmin'],
+    roles: ['RehabAdmin','admin'],
   },
   {
     path: "/rehab-messages",
     icon: <Image src={"/images/new_order_icon.svg"} width={12} height={12} />,
     title: "Emergency ",
-    roles: ['RehabAdmin'],
+    roles: ['RehabAdmin','admin'],
   },
 
   {
@@ -42,7 +42,7 @@ const routes = [
       <Image src={"/images/order_history_icon.svg"} width={12} height={12} />
     ),
     title: "Orders History",
-    roles: [ "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin"],
+    roles: [ "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin",'admin'],
     childs: [
       {
         path: "/orders/completed",
@@ -62,7 +62,7 @@ const routes = [
             </button>
           </Link>
         ),
-        roles: [ "admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin"],
+        roles: [ "admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin",'admin'],
       },
       {
         path: "/orders/accepted",
@@ -82,7 +82,7 @@ const routes = [
             </button>
           </Link>
         ),
-        roles: [ "admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin"],
+        roles: [ "admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin",'admin'],
       },
       {
         path: "/orders/cancelled",
@@ -102,7 +102,7 @@ const routes = [
             </button>
           </Link>
         ),
-        roles: [ "admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin"],
+        roles: [ "admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin",'admin'],
       },
     
     ],
@@ -111,7 +111,7 @@ const routes = [
     path: "/messages",
     icon: <Image src={"/images/new_order_icon.svg"} width={12} height={12} />,
     title: "Messages",
-    roles: ["Doctor"],
+    roles: ["Doctor",'admin'],
   },
   {
     path: "/chat",
@@ -132,124 +132,124 @@ const routes = [
     title: "Rehab Center",
     roles: [ "admin"],
   },
-  {
-    path: "/rehab-users",
-    icon: <Image src={"/images/users_icon.svg"} width={12} height={12} />,
-    title: "Users",
-    roles: ["rehab" ],
-    childs: [
-      {
-        path: "/rehab-doctors",
-        icon: <Image src={"/images/doctors_icon.svg"} width={12} height={12} />,
-        label: (
-          <Link
-            href="/rehab-doctors"
-            className="font-normal  text-base font-poppins "
-          >
-            <button
-              className="py-4 text-white px-4 bg-slate-700 "
-              style={{ backgroundColor: "transparent", border: "none" }}
-            >
-              Doctors
-            </button>
-          </Link>
-        ),
-        roles: [ "admin","RehabAdmin" ],
-      },
-      {
-        path: "/rehab-nurses",
-        icon: <Image src={"/images/nurses_icon.svg"} width={12} height={12} />,
-        label: (
-          <Link href="/rehab-nurses" className="font-normal  text-base font-poppins ">
-            <button
-              className="py-4 text-white px-4 bg-slate-700 "
-              style={{ backgroundColor: "transparent", border: "none" }}
-            >
-              Nurses
-            </button>
-          </Link>
-        ),
-        roles: [ "RehabAdmin"],
-      },
-      {
-        path: "/rehab-patient",
-        icon: (
-          <Image src={"/images/patients_icon.svg"} width={12} height={12} />
-        ),
-        label: (
-          <Link
-            href="/rehab-patient"
-            className="font-normal  text-base font-poppins "
-          >
-            <button
-              className="py-4 text-white px-4 bg-slate-700 "
-              style={{ backgroundColor: "transparent", border: "none" }}
-            >
-              Patients
-            </button>
-          </Link>
-        ),
-        roles: ["RehabAdmin" ],
-      },
+  // {
+  //   path: "/rehab-users",
+  //   icon: <Image src={"/images/users_icon.svg"} width={12} height={12} />,
+  //   title: "Users",
+  //   roles: ["admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin"],
+  //   childs: [
+  //     {
+  //       path: "/rehab-doctors",
+  //       icon: <Image src={"/images/doctors_icon.svg"} width={12} height={12} />,
+  //       label: (
+  //         <Link
+  //           href="/rehab-doctors"
+  //           className="font-normal  text-base font-poppins "
+  //         >
+  //           <button
+  //             className="py-4 text-white px-4 bg-slate-700 "
+  //             style={{ backgroundColor: "transparent", border: "none" }}
+  //           >
+  //             Doctors
+  //           </button>
+  //         </Link>
+  //       ),
+  //       roles: ["admin",  "Nurses", "Doctor", "Aya", "patient", "PhysioDcotor","RehabAdmin"],
+  //     },
+  //     {
+  //       path: "/rehab-nurses",
+  //       icon: <Image src={"/images/nurses_icon.svg"} width={12} height={12} />,
+  //       label: (
+  //         <Link href="/rehab-nurses" className="font-normal  text-base font-poppins ">
+  //           <button
+  //             className="py-4 text-white px-4 bg-slate-700 "
+  //             style={{ backgroundColor: "transparent", border: "none" }}
+  //           >
+  //             Nurses
+  //           </button>
+  //         </Link>
+  //       ),
+  //       roles: [ "RehabAdmin","admin"],
+  //     },
+  //     {
+  //       path: "/rehab-patient",
+  //       icon: (
+  //         <Image src={"/images/patients_icon.svg"} width={12} height={12} />
+  //       ),
+  //       label: (
+  //         <Link
+  //           href="/rehab-patient"
+  //           className="font-normal  text-base font-poppins "
+  //         >
+  //           <button
+  //             className="py-4 text-white px-4 bg-slate-700 "
+  //             style={{ backgroundColor: "transparent", border: "none" }}
+  //           >
+  //             Patients
+  //           </button>
+  //         </Link>
+  //       ),
+  //       roles: ["RehabAdmin","admin" ],
+  //     },
     
       
-      {
-        path: "/rehab-aya",
-        icon: <Image src={"/images/nurses_icon.svg"} width={12} height={12} />,
-        label: (
-          <Link href="/rehab-aya" className="font-normal  text-base font-poppins ">
-            <button
-              className="py-4 text-white px-4 bg-slate-700 "
-              style={{ backgroundColor: "transparent", border: "none" }}
-            >
-              Aya
-            </button>
-          </Link>
-        ),
-        roles: ["RehabAdmin"],
-      },
-      {
-        path: "/rehab-physio",
-        icon: <Image src={"/images/nurses_icon.svg"} width={12} height={12} />,
-        label: (
-          <Link href="/rehab-physio" className="font-normal  text-base font-poppins ">
-            <button
-              className="py-4 text-white px-4 bg-slate-700 "
-              style={{ backgroundColor: "transparent", border: "none" }}
-            >
-              Physio
-            </button>
-          </Link>
-        ),
-        roles: ["RehabAdmin"],
-      },
+  //     {
+  //       path: "/rehab-aya",
+  //       icon: <Image src={"/images/nurses_icon.svg"} width={12} height={12} />,
+  //       label: (
+  //         <Link href="/rehab-aya" className="font-normal  text-base font-poppins ">
+  //           <button
+  //             className="py-4 text-white px-4 bg-slate-700 "
+  //             style={{ backgroundColor: "transparent", border: "none" }}
+  //           >
+  //             Aya
+  //           </button>
+  //         </Link>
+  //       ),
+  //       roles: ["RehabAdmin","admin"],
+  //     },
+  //     {
+  //       path: "/rehab-physio",
+  //       icon: <Image src={"/images/nurses_icon.svg"} width={12} height={12} />,
+  //       label: (
+  //         <Link href="/rehab-physio" className="font-normal  text-base font-poppins ">
+  //           <button
+  //             className="py-4 text-white px-4 bg-slate-700 "
+  //             style={{ backgroundColor: "transparent", border: "none" }}
+  //           >
+  //             Physio
+  //           </button>
+  //         </Link>
+  //       ),
+  //       roles: ["RehabAdmin","admin"],
+  //     },
  
-    ],
-  },
+  //   ],
+  // },
   {
     path: "/users",
     icon: <Image src={"/images/users_icon.svg"} width={12} height={12} />,
     title: "Users",
     roles: [ "admin", ],
     childs: [
-      {
-        path: "/doctors",
-        icon: <Image src={"/images/doctors_icon.svg"} width={12} height={12} />,
-        label: (
-          <Link
-            href="/doctors"
-            className="font-normal  text-base font-poppins "
-          >
-            <button
-              className="py-4 text-white px-4 bg-slate-700 "
-              style={{ backgroundColor: "transparent", border: "none" }}
-            >
-              Doctors
-            </button>
-          </Link>
-        ),
-        roles: [ "admin", ],
-      },
+      // {
+      //   path: "/doctors",
+      //   icon: <Image src={"/images/doctors_icon.svg"} width={12} height={12} />,
+      //   label: (
+      //     <Link
+      //       href="/doctors"
+      //       className="font-normal  text-base font-poppins "
+      //     >
+      //       <button
+      //         className="py-4 text-white px-4 bg-slate-700 "
+      //         style={{ backgroundColor: "transparent", border: "none" }}
+      //       >
+      //         Doctors
+      //       </button>
+      //     </Link>
+      //   ),
+      //   roles: [ "admin", ],
+      // },
       {
         path: "/nurses",
         icon: <Image src={"/images/nurses_icon.svg"} width={12} height={12} />,
@@ -285,21 +285,21 @@ const routes = [
         ),
         roles: [ "admin", ],
       },
-      {
-        path: "/rehab",
-        icon: <Image src={"/images/doctors_icon.svg"} width={12} height={12} />,
-        label: (
-          <Link href="/rehab" className="font-normal  text-base font-poppins ">
-            <button
-              className="py-4 text-white px-4 bg-slate-700 "
-              style={{ backgroundColor: "transparent", border: "none" }}
-            >
-              Rehab Center
-            </button>
-          </Link>
-        ),
-        roles: [ "admin"],
-      },
+      // {
+      //   path: "/rehab",
+      //   icon: <Image src={"/images/doctors_icon.svg"} width={12} height={12} />,
+      //   label: (
+      //     <Link href="/rehab" className="font-normal  text-base font-poppins ">
+      //       <button
+      //         className="py-4 text-white px-4 bg-slate-700 "
+      //         style={{ backgroundColor: "transparent", border: "none" }}
+      //       >
+      //         Rehab Center
+      //       </button>
+      //     </Link>
+      //   ),
+      //   roles: [ "admin"],
+      // },
       
       {
         path: "/aya",
@@ -371,7 +371,7 @@ const routes = [
     path: "/expertProfile",
     icon: <Image src={"/images/analysis_icon.svg"} width={12} height={12} />,
     title: "Expert Profile",
-    roles: ["expert"],
+    roles: ["expert","admin"],
   },
   {
     // path: "/orders/order-history",

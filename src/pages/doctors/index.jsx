@@ -159,15 +159,73 @@ const Index = () => {
     queryClient.invalidateQueries(["Doctors"])
   }
  })
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit =async (e) => {
     e.preventDefault();
-    if (editData) {
-      handleUploadImage();
-    } else {
-      addMutaion.mutate()
-      // createUser();
-      // handleUploadImage();
-    }
+      try {
+        console.log("nenennenenenenen", formData)
+        let params = convertEmptyStringToNull(formData)
+        if (!editData) {
+          await addRehab(params)
+            .then((res) => {
+              if (res.data.new_rehab) {
+                setVisible(false);
+                getRehabData()
+                MySwal.fire({
+                  icon: "success",
+                  // title: 'Oops...',
+                  text: "Doctor Added Successfull",
+                });
+              }
+            })
+            .catch((err) => {
+              console.log("send error.nnnnn..", err);
+              MySwal.fire({
+                icon: "error",
+                // title: 'Oops...',
+                text: err?.response?.data?.message,
+              });
+            })
+            .finally(() => {
+              MySwal.hideLoading();
+              handleOk();
+              handleCancel()
+            });
+        } else {
+          console.log("i am ok")
+          await UpdateRehab(params)
+            .then((res) => {
+              if (res.data) {
+                setVisible(false);
+                getRehabData()
+                MySwal.fire({
+                  icon: "success",
+                  // title: 'Oops...',
+                  text: "Doctor Updated Successfull",
+                });
+              }
+            })
+            .catch((err) => {
+              console.log("send error.nnnnn..", err);
+              MySwal.fire({
+                icon: "error",
+                // title: 'Oops...',
+                text: err?.response?.data?.message,
+              });
+            })
+            .finally(() => {
+              MySwal.hideLoading();
+              handleOk();
+              handleCancel()
+            });
+        }
+      } catch (error) {
+        console.log(error)
+        MySwal.fire({
+          icon: "error",
+          // title: 'Oops...',
+          text: error?.response,
+        });
+      }
   };
   const delteImage = async () => {
     const desertRef = ref(storage, `doctors/${imgName}`);

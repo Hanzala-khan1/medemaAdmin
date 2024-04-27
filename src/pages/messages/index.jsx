@@ -1,196 +1,259 @@
-import React, { useEffect, useState } from "react";
-import { db, auth } from "@/config/firebase";
-import { collection, query, getDoc, where ,getDocs,onSnapshot, updateDoc,arrayUnion,doc, addDoc, Timestamp, and} from "firebase/firestore";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "antd";
-import { useRouter } from "next/router";
-import Swal from 'sweetalert2'
-import withReactContent from 'sweetalert2-react-content'
-const index = () => {
+import { addmessages, getchats, getmessages } from '@/services';
+import { BASE_URL } from '@/services/endpoints';
+import axios from 'axios';
+import React, { use, useEffect, useState } from 'react';
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+
+const Index = () => {
+  const [activeChat, setActiveChat] = useState(null);
+  const [Chats, setChats] = useState([]);
+  const [message, SetMessages] = useState([]);
+let [sendMessage,setSendMessage]=useState("")
+  const [activePerson, setActivePerson] = useState(null);
+  const [friendsName, setFriendsName] = useState('');
+
+  const token = localStorage.getItem("token");
+  const Userdata = JSON.parse(localStorage.getItem("user"))
+
   const MySwal = withReactContent(Swal);
-  const [special, setSpecial] = useState("");
-  const [id, setId] = useState("");
-  
-const router = useRouter();
-  useEffect(() => {
-    let a = localStorage.getItem("id");
-    setId(a);
-    let b= localStorage.getItem("speciality")
-    setSpecial(b)
-     
-    
-    
-  }, []);
-   const [formData,setFormData]=useState({
-  message:""
-   })
 
-   const handleFormChange =(event)=>{
-   const {name,value}= event.target;
-   setFormData((prev)=>({...prev, [name]:value}))
-   }
-    const publicReplay =async(e)=>{
-    
-     try{
-      const res = await updateDoc(doc(db,"askQuestions",e),{
-        replays: arrayUnion({
-          message: formData.message,
-          sentBy: "doctor",
-          doctorId:id
-        }),
-       })
-       console.log(res)
-       alert("message Sent");
-       setFormData({message:""})
-      
-     }catch(error){
+  const getallchats = async () => {
+    try {
+      MySwal.showLoading();
+
+
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+      let url = `${BASE_URL}/message/getChatRoom`;
+
+      // const rehablist = await 
+      let user_data = await axios({
+        method: 'post',
+        url: url,
+        data: {
+          page: 1,
+          limit: 20,
+        },
+        headers:headers
+      });
+
+      // if (!user_data) {
+      //   MySwal.fire({
+      //     icon: "info",
+      //     // title: 'Oops...',
+      //     text: "No Data found",
+      //   });
+      // }
+      // MySwal.hideLoading();
+      setChats(user_data.data.chatRoom)
+
+
+      MySwal.close();
+    } catch (error) {
       console.log(error)
-     }
-     
+      MySwal.fire({
+        icon: "error",
+        // title: 'Oops...',
+        text: error?.response?.data?.message,
+      });
     }
 
-  
+  };
+  useEffect(() => {
+    getallchats()
 
- const fetchDoctor = async()=>{
-  const docRef = query(collection(db,"expert-doctor"),where("auth_id","==" ,id!==""?id:localStorage.getItem("id")))
-  let brr=[]
-  try{
-       const res= await getDocs(docRef);
-       res.docs.map((doc)=>{
-        brr.push(doc.data())
-      console.log(doc.data())
-       })
-       return brr
-      }catch(error){
-    console.log(error)
-  }
-}
-const {data:doctorData ,isLoading:newLoading} =useQuery(["Doctor"],fetchDoctor,{
-  staleTime:60000
-})
-if(!newLoading){
-  console.log(doctorData.data)
-}
-  const fetchMessages=async()=>{
-      const docRef = query(collection(db,"askQuestions"),where("category","==" ,special!==""?special:localStorage.getItem("speciality")))
-     let arr=[]
-      try{
-           const res= await getDocs(docRef);
-           res.docs.map((doc)=>{
-            arr.push(doc.data())
-          console.log(doc.data())
-           })
-           return arr
-          }catch(error){
-        console.log(error)
+    // if (activeChat) {
+    //   const intervalId = setInterval(() => {
+    //     getallmessages();
+    //   }, 2000); // 2000 milliseconds = 2 seconds
+
+    //   // Clean up interval on component unmount to prevent memory leaks
+    //   return () => clearInterval(intervalId);
+    // }
+  }, [])
+  const handlePersonClick = (chatId) => {
+    // if (!person.classList.contains('active')) {
+    //   setActiveChat(person.getAttribute('data-chat'));
+    //   setActivePerson(person);
+
+    //   // Update active class for chat and person elements
+    //   document.querySelector('.active').classList.remove('active');
+    //   person.classList.add('active');
+
+    //   // Update chat container with the active chat
+    //   const chatContainer = document.querySelector('.container .right');
+    //   const chatToActivate = chatContainer.querySelector(`[data-chat="${person.getAttribute('data-chat')}"]`);
+    //   chatContainer.querySelector('.active-chat').classList.remove('active-chat');
+    //   chatToActivate.classList.add('active-chat');
+
+    //   // Update friends' name in chat header
+    //   setFriendsName(person.querySelector('.name').innerText);
+    // }
+    setActiveChat(chatId)
+    getallmessages(chatId)
+  };
+
+  console.log("lelelelleleleleel", message, message.length)
+  const getallmessages = async (chatId) => {
+    try {
+      // MySwal.showLoading();
+
+      let user_data;
+      let params = {
+        chatId: chatId
       }
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+      let url = `${BASE_URL}/message/getmessages`;
     
+      let allmessages = await axios({
+        method: 'post',
+        url: url,
+        data: params,
+        headers: headers
+      });
+      console.log("ttttttttttttttttttvvvvvvvvvvvvvvvv", allmessages)
+      // MySwal.close();
+      // return
+      // if (!user_data) {
+      //   MySwal.fire({
+      //     icon: "info",
+      //     // title: 'Oops...',
+      //     text: "No Data found",
+      //   });
+      // }
+      // MySwal.hideLoading();
+      SetMessages(allmessages.data)
+
+
+      // MySwal.close();
+    } catch (error) {
+      console.log(error)
+      MySwal.fire({
+        icon: "error",
+        // title: 'Oops...',
+        text: error?.response?.data?.message,
+      });
     }
- 
-  const {data,isLoading} =useQuery(["Message"],fetchMessages,{
-    staleTime:60000,
-    refetchOnWindowFocus:"always"
-  })
-  if(!isLoading){
-    console.log(data)
   }
-  
-  const initChat = async(e)=>{
-    const docRef = collection(db,"chat-room")
-  
-  try{
-    
-  
-     const res = await addDoc(docRef,{
-        doctorId:id!==""?id:localStorage.getItem("id"),
-        doctorName:doctorData[0]?.name,
-        messages:[{message:e.message,sentBy:"patient",sentAt:e.time}],
-        patientName:e.sender.username,
-        patientId:e.senderId,
-        doctorImage:doctorData[0].images.url,
-        hospitalName:doctorData[0].hospital,
-        speciality:doctorData[0].speciality,
-        })
-       
-        console.log(res)
-        const newRef = doc(db,"chat-room",res.id);
-        const newRes = await updateDoc(newRef,{
-         id:res.id
-        })
-       console.log(newRes)
-    MySwal.fire('Chat initiated ')
-    router.push("/chat")
-   }catch(error){
-    console.log(error)
-   }
-}
-const checkChatRoom =async(e)=>{
-  const checkRef = query(collection(db,"chat-room")
-  ,and(where("doctorId","==" , id!==""?id : localStorage.getItem("id")),where("patientId","==",e.senderId)))
- 
-try{
-  console.log("hello")
-  const response = await getDocs(checkRef);
-
-  if(response.empty==true){
-    initChat(e)
-  }else{
-    MySwal.fire('Chat initiated ')
-   router.push("/chat")
+  const messageinputchange=(e)=>{
+    setSendMessage(e.target.value)
   }
- 
-}catch(error){
-  console.log(error)
-}
-}
-  return <div>
-     
-   {
-    !isLoading || !data? 
-    <div className=" mt-4 flex flex-col gap-y-2">
-      {
-        data?.map((doc,index)=>{
-     
+  const hanldeSendMessage=async (e)=>{
+    e.preventDefault()
+    try {
+      // MySwal.showLoading();
 
-   
-          return(
-            <div className=" py-4  border bg-blue-100 bg-opacity-50 rounded-lg px-4" key={index}>
-            <h3 className="capitalize mt-2"> Patient Name : {doc.sender?.username}</h3>
-            <h4>Message : {doc.message}</h4>
-            
-            {doc.type=="public"?
-            <div>
-              <h3>Answers</h3>
-              {doc.replays?.map((doc,index)=>{
-                return(
-                  <h4 key={index}> {doc.message}</h4>
-                )
-              })}
-              <h5>This Message is Publicies  any one can see your replay </h5>
-           
-            <div className=" flex flex-col  space-x-2 ">
-            
-              <textarea type="text" rows="4" placeholder="Enter Replay" className="py-2 outline-none bg-white border-0 rounded-md px-4 w-[600px]" name="message" value={formData.message} onChange={handleFormChange} /> 
-              <button className="bg-blue-900 text-white mt-2 h-[40px] w-[120px] outline-none rounded-lg" onClick={()=>{publicReplay(doc.id)}} >Send Replay</button>
-            </div>
-           
-            </div>
-            :
-            <div>
-              <h5>This Message is Private would you like to initiate Chat </h5>
-              <Button onClick={()=>{checkChatRoom(doc)}}>Initiate Chat</Button>
-              
-            </div>
-            }
+      let user_data;
+      let params = {
+        chatId: activeChat,
+        message:sendMessage,
+      }
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+      let url = `${BASE_URL}/message/getChatRoom`;
+      
+      let allmessages = await axios({
+        method: 'post',
+        url: url,
+        data: params,
+        headers: headers
+      });
+      console.log("ttttttttttttttttttvvvvvvvvvvvvvvvv", allmessages.data)
+      // let allmessages = await addmessages(params)
+      if (!allmessages) {
+        MySwal.fire({
+          icon: "info",
+          // title: 'Oops...',
+          text: "No Data found",
+        });
+      }
+      MySwal.hideLoading();
+      SetMessages([...message,allmessages.data])
+      setSendMessage("")
+      // MySwal.close();
+    } catch (error) {
+      console.log(error)
+      MySwal.fire({
+        icon: "error",
+        // title: 'Oops...',
+        text: error?.response?.data?.message,
+      });
+    }
+  }
+
+  return (
+    <div className="wrapper">
+      <div className="container">
+        <div className="left">
+          <div className="top">
+            <input type="text" placeholder="Search" />
+            <a href="javascript:;" className="search"></a>
           </div>
-          )
-         
-        })
-      }
+          <ul className="people">
+            {Chats.length && (
+              Chats.map((chatusers) => {
+                let showUser = chatusers.users.filter((user) => {
+                  console.log("usssssssssssseeeeeeeeeeeeeeeeerrrrrrrr", user._id.toString(), Userdata._id)
+                  return (user._id.toString() !== Userdata._id)
+                })
+                showUser = showUser[0].full_name
+
+                return (
+                  <li className={` person ${activeChat== chatusers._id.toString()?"active":""}`} data-chat="person1" onClick={() => handlePersonClick(chatusers._id.toString())} style={{
+                    listStyle: "none"
+                  }}>
+                    <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/382994/thomas.jpg" alt="" />
+                    <span className="name">{showUser}</span>
+                    <span className="time">{chatusers.created_at}</span>
+                    {/* <span className="preview">I was wondering...</span> */}
+                  </li>
+                )
+              })
+
+            )}
+          </ul>
+        </div>
+        <div className="right">
+          {/* Chat header */}
+          <div className="top"><span>To: <span className="name">{friendsName}</span></span></div>
+          {/* Chat messages */}
+          <div className="chat active-chat" style={{
+            overflowY: "auto"
+          }}>
+
+            {message.length && message.map((messageword) => {
+              let isme;
+              isme = (Userdata._id == messageword?.to_user?.toString())
+              return (
+                <>
+                  <div key={messageword?._id?.toString()} class={`bubble ${isme ? "you" : "me"}`}>
+                    <p>{messageword.message}</p>
+                    <p>{messageword.created_at}</p>
+                  </div>
+                </>
+              )
+            })}
+          </div>
+          {/* Input area for typing messages */}
+          <div className="write"  style={{
+            display: "flex", padding:"0px 10px"
+          }}>
+            <a href="javascript:;" className="write-link attach"></a>
+            <input type="text"   value={sendMessage} onChange={messageinputchange}  style={{
+            width: "100%"
+          }}/>
+            <a  className="write-link smiley"></a>
+            <a  className="write-link send" onClick={hanldeSendMessage}></a>
+          </div>
+        </div>
+      </div>
     </div>
-    :<div className="mt-4"> No Message</div>
-   }
-  </div>;
+  );
 };
 
-export default index;
+export default Index;

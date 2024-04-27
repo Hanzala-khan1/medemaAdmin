@@ -12,6 +12,8 @@ import { getUserCount } from "@/services";
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import  axios  from "axios";
+import { BASE_URL } from "@/services/endpoints";
 
 const Index = () => {
   const [userCount, setUserCount] = useState({})
@@ -32,23 +34,29 @@ const Index = () => {
   }, []);
 
 
-  const userCountData = () => {
+  const userCountData = async () => {
+    try {
+      // MySwal.showLoading();
 
-    MySwal.showLoading();
+      const token = localStorage.getItem("token");
 
-    getUserCount()
-      .then((res) => {
-        if (res.data) {
-          console.log("...................................",res.data)
-          setUserCount(res.data)
-        }
-      })
-      .catch((err) => {
-        console.log("err..", err?.response?.data);
-      })
-      .finally(() => {
-        MySwal.hideLoading();
-      });
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+
+      let url = `${BASE_URL}/user/getUsersCount`;
+
+      const userCount = await axios.get(url, { headers });
+      if (userCount.data) {
+        setUserCount(userCount.data)
+      }
+
+      // MySwal.hideLoading();
+
+    } catch (error) {
+      console.log("err..", error);
+      MySwal.hideLoading();
+    }
   };
 
   const columns = [
