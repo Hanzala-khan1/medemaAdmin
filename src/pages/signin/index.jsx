@@ -75,6 +75,9 @@ const Index = () => {
         const role = loginUser?.data?.user?.role;
         localStorage.setItem("role", role);
         localStorage.setItem("user", JSON.stringify(loginUser.data.user));
+        if (user.type==RehabEmployee){
+          localStorage.setItem("rehab", JSON.stringify(loginUser.data.user.rehab));
+        }
         if (role == "doctor") {
           localStorage.setItem("speciality", role);
         }

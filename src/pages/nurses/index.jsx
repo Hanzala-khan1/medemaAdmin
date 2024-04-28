@@ -229,6 +229,7 @@ const Index = () => {
             handleOk();
             handleCancel()
           });
+          getuserdata()
       } else {
         console.log("i am ok")
         await updateuser(params)

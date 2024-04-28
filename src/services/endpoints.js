@@ -1,5 +1,5 @@
-// const BASE_URL = "https://medemaa-2c866c7d1e6e.herokuapp.com/";
 const BASE_URL = "https://medeema-backend-8736fa6bae09.herokuapp.com/";
+// const BASE_URL = "http://localhost:5000";
 
 const ENDPOINTS = {
   GET_CATEGORIES: "/user/getCategories",

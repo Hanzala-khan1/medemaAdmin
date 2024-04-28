@@ -413,7 +413,7 @@ const Index = () => {
             bg={"#E0F1E0"}
           />
         </div>
-        <div className="flex flex-col space-y-4">
+        {/* <div className="flex flex-col space-y-4">
           <h1 className="font-semibold font-barlow text-2xl">New Requests</h1>
           <Table
             columns={columns}
@@ -422,7 +422,7 @@ const Index = () => {
             id="newOrders"
             scroll={{ x: 900 }}
           />
-        </div>
+        </div> */}
       </main>
     </>
   );

@@ -8,7 +8,7 @@ import {
   Spin,
   Popconfirm,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import avatar from "../../../public/images/user.png";
 import Head from "next/head";
 
@@ -30,13 +30,11 @@ import {
   doc,
   deleteDoc,
   updateDoc,
-  query,
-  where,
 } from "firebase/firestore";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/router";
-import Swal from "sweetalert2";
-import withReactContent from "sweetalert2-react-content";
+import Swal from 'sweetalert2'
+import withReactContent from 'sweetalert2-react-content'
 import {
   ref,
   uploadBytes,
@@ -46,10 +44,15 @@ import {
 } from "firebase/storage";
 import { useRef } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { BASE_URL } from "@/services/endpoints";
+import axios from "axios";
+import { typescript } from "../../../next.config";
+import { addRehab, deleteRehab, deleteUser, updateuser, userSignup } from "@/services";
+import { convertEmptyStringToNull } from "@/lib/commonfunction";
 const { TextArea } = Input;
 
 const Index = () => {
-  const MySwal = withReactContent(Swal);
+  const MySwal = withReactContent(Swal)
   const [visibleAlert, setVisibleAlert] = useState(false);
   const [alertText, setAlertText] = useState("");
   const [alertType, setAlertType] = useState("success");
@@ -69,96 +72,235 @@ const Index = () => {
   var previewArr = [];
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    name: "",
-    perDay: "",
-    perHour: "",
-    discount: "",
-    address: "",
-    email: "",
-    password: "",
-    phone: "",
-    details: "",
-    ref: "",
-    role: "nurse",
-    experience: "",
-    workingAt: "",
-    education: "",
-    long: "",
-    rgNo: "",
-    speciality: "",
-    lat: "",
-    id: "",
+    type: null,
+    role: null,
+    full_name: null,
+    email: null,
+    password: null,
+    confirmPassword: null,
+    description: null,
+    discount: null,
+    address: null,
+    city: null,
+    phone: null,
+    is_rehab_employee: null,
+    is_rehab_admin: null,
+    rehab: null,
+    is_super_admin: null,
+    availability: null,
+    details: null,
+    dob: null,
+    education: null,
+    experience: null,
     gender: "male",
-    availability: "weekdays",
-    unavailability: [],
+    hospital: null,
+    emergency: null,
+    perHour: null,
+    perDay: null,
     images: {
       url: "",
       name: "",
     },
   });
+  const [userData, setUserdata] = useState([])
 
-  const handleFormChange = (event) => {
-    const { name, value } = event.target;
-    if (name == "name") {
-      const val = value?.toLowerCase();
-      setFormData((prevFormData) => ({ ...prevFormData, [name]: val }));
-    } else {
-      setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+  let getuserdata = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const rehab = localStorage.getItem("rehab");
+
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+      // let data = {
+      //   page: 1, 
+      //   limit: 20, 
+      // };
+      let url = `${BASE_URL}/user/getUserByType`;
+      let body = {
+        page: 1,
+        limit: 20,
+        type: "RehabEmployee",
+        rehab: "rehab",
+        role: "Nurses"
+      }
+      // const userCount = await axios.get(url, data,{ headers });
+      const userList = await axios({
+        method: 'post',
+        url: url,
+        data: body
+      });
+      if (userList.data.userList) {
+        setUserdata(userList.data.userList.results);
+      }
+      else {
+        console.log("no rehab Found")
+      }
+
+    } catch (error) {
+      console.log("err..", error);
+      MySwal.hideLoading(); // Assuming MySwal is for a loading indicator
     }
   };
-
+  useEffect(() => {
+    getuserdata()
+  }, [])
+  const handleFormChange = (event) => {
+    console.log(event.target)
+    const { name, value } = event.target;
+    // if (name == "name") {
+    //   const val = value?.toLowerCase();
+    //   setFormData((prevFormData) => ({ ...prevFormData, [name]: val }));
+    // } else {
+    setFormData((prevFormData) => ({ ...prevFormData, [name]: value }));
+    // }
+  };
   const handleGenderChange = (value) => {
     setFormData((e) => ({ ...e, gender: value }));
   };
 
   const createUser = async () => {
-    createUserWithEmailAndPassword(
-      auth,
-      formData?.email,
-      formData?.password
-    ).then((userCredential) => {
-      const user = userCredential.user;
+    createUserWithEmailAndPassword(auth, formData?.email, formData?.password)
+      .then((userCredential) => {
+        const user = userCredential.user;
 
-      const userData = {
-        name: formData?.name,
-        email: formData?.email,
-        role: "nurse",
-        id: user?.uid,
-      };
-      const usersCollectionRef = collection(db, "users");
-      const userDocRef = doc(usersCollectionRef, user.uid);
+        const userData = {
+          name: formData?.name,
+          email: formData?.email,
+          role: 'nurse',
+          id: user?.uid
+        };
+        const usersCollectionRef = collection(db, "users");
+        const userDocRef = doc(usersCollectionRef, user.uid);
 
-      setDoc(userDocRef, userData)
-        .then(() => {
-          imgUrl == "" ? addData("", user?.uid) : handleUploadImage(user?.uid);
-          console.log("User data saved successfully");
+        setDoc(userDocRef, userData)
+          .then(() => {
+            imgUrl == "" ? addData("", user?.uid) :
+              handleUploadImage(user?.uid);
+            console.log("User data saved successfully")
+          })
+          .catch((error) => {
+            console.log("Error saving user data:", error)
+          })
+      }).catch(() => {
+        MySwal.fire({
+          icon: 'error',
+          // title: 'Oops...',
+          text: ' Email already in use',
+
         })
-        .catch((error) => {
-          console.log("Error saving user data:", error);
-        });
-    }).catch(()=>{
-      MySwal.fire({
-        icon: 'error',
-        // title: 'Oops...',
-        text: ' Email already in use',
-   
       })
-    })
-  };
+  }
   const addMutaion = useMutation(createUser, {
+
     onSuccess: () => {
       console.log("succes");
-      queryClient.invalidateQueries(["Rehab-Nurses"]);
-    },
-  });
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    if (editData) {
-      handleUploadImage();
-    } else {
-      addMutaion.mutate();
-      // createUser();
-      // handleUploadImage();
+      queryClient.invalidateQueries(["Nurses"])
+    }
+  })
+  const handleFormSubmit = async (e) => {
+    try {
+      e.preventDefault();
+      console.log("nenennenenenenen", formData)
+      let params = convertEmptyStringToNull(formData)
+      params['type'] = "Individual"
+      params["role"] = "Nurses"
+      if (!editData) {
+        await userSignup(params)
+          .then((res) => {
+            if (res.data.new_rehab) {
+              setVisible(false);
+              getuserdata()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "Nurse Added Successfully",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("send error.nnnnn..", err);
+            MySwal.fire({
+              icon: "error",
+              // title: 'Oops...',
+              text: err?.response?.data?.message,
+            });
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            handleOk();
+            handleCancel()
+          });
+        getuserdata()
+      } else {
+        console.log("i am ok")
+        await updateuser(params)
+          .then((res) => {
+            if (res.data) {
+              setVisible(false);
+              getuserdata()
+              MySwal.fire({
+                icon: "success",
+                // title: 'Oops...',
+                text: "User Updated Successfull",
+              });
+            }
+          })
+          .catch((err) => {
+            console.log("send error.nnnnn..", err);
+            MySwal.fire({
+              icon: "error",
+              // title: 'Oops...',
+              text: err?.response?.data?.message,
+            });
+          })
+          .finally(() => {
+            MySwal.hideLoading();
+            handleOk();
+            handleCancel()
+          });
+      }
+    } catch (error) {
+      console.log(error)
+      MySwal.fire({
+        icon: "error",
+        // title: 'Oops...',
+        text: error?.response,
+      });
+    }
+  };
+
+  const deleteUserdata = async (e) => {
+    console.log(e);
+    try {
+      await deleteUser(e)
+        .then((res) => {
+          if (res.data) {
+            setVisible(false);
+            getuserdata()
+            MySwal.fire({
+              icon: "success",
+              // title: 'Oops...',
+              text: "User Deleted Successful",
+            });
+          }
+        })
+        .catch((err) => {
+          console.log("send error.nnnnn..", err);
+          MySwal.fire({
+            icon: "error",
+            // title: 'Oops...',
+            text: err?.response?.data?.message,
+          });
+        })
+        .finally(() => {
+          MySwal.hideLoading();
+          handleOk();
+          handleCancel()
+        });
+
+    } catch (err) {
+      console.log(err);
     }
   };
   const delteImage = async () => {
@@ -184,65 +326,71 @@ const Index = () => {
 
     try {
       const res = await addDoc(newCityRef, {
-        ...formData,
-        auth_id: uid,
+        ...formData, auth_id: uid
       });
       console.log(res.id);
 
       await updateDoc(doc(db, "nurses", res.id), {
         id: res.id,
-        ref: localStorage.getItem("id"),
-        images: {
-          url: imageUrl ? imageUrl : "",
-          name: imgUrl !== "" ? imgUrl.uid : "",
-        },
+        images: { url: imageUrl ? imageUrl : "", name: imgUrl !== "" ? imgUrl.uid : "" },
+
       });
-      queryClient.invalidateQueries(["Rehab-Nurses"]);
+      queryClient.invalidateQueries(["Nurses"]);
       MySwal.fire({
-        icon: "success",
+        icon: 'success',
         // title: 'Oops...',
-        text: " Data added Successfull",
-      });
-      setImgUrl("");
+        text: ' Data added Successfull',
+
+      })
+      setImgUrl("")
       setBtnAdd("primary");
       handleCancel();
       // router.reload("/nurses");
+
+
 
       setLoading(false);
     } catch (err) {
       handleCancel();
       console.log(err);
       MySwal.fire({
-        icon: "error",
-        title: "Oops...",
-        text: "Something went wrong!",
-      });
-      setLoading(false);
-      handleCancel();
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Something went wrong!',
+
+      })
+      setLoading(false)
+      handleCancel()
     }
   };
   const updateDocData = async (docs) => {
+
     try {
       if (inUpdate) {
         await updateDoc(doc(db, "nurses", formData.id), {
           images: { url: docs, name: imgUrl.uid },
         });
       }
-      handleCancel();
-      queryClient.invalidateQueries(["Rehab-Nurses"]);
+      handleCancel()
+      queryClient.invalidateQueries(["Nurses"])
       MySwal.fire({
-        icon: "success",
+        icon: 'success',
         // title: 'Oops...',
-        text: "Edited Successfull",
-      });
+        text: 'Edited Successfull',
+
+      })
       setInUpdate(false);
 
       handleOk();
       setEditData(false);
-    } catch (error) {
-      console.log(error);
+
+
     }
-  };
+    catch (error) {
+      console.log(error)
+    }
+
+  }
   const updateData = async (docs) => {
     const newCityRef = collection(db, "nurses");
     // const {title,fees,address,powerAvail,doctorAvail,}=formData
@@ -255,47 +403,54 @@ const Index = () => {
       }
       await updateDoc(doc(db, "nurses", formData.id), { ...formData });
 
-      updateDocData(docs);
+
+      updateDocData(docs)
+
+
+
     } catch (err) {
       console.log(err);
-      updateDocData(docs);
+      updateDocData(docs)
       // MySwal.fire({
       //   icon: 'error',
       //   title: 'Oops...',
       //   text: 'Something went wrong!',
 
       // })
-      setLoading(false);
-      handleCancel();
+      setLoading(false)
+      handleCancel()
     }
   };
   const deleteDocData = async (e) => {
     try {
       const res = await deleteDoc(doc(db, "nurses", e.id));
-      queryClient.invalidateQueries(["Rehab-Nurses"]);
-      console.log(res);
+      queryClient.invalidateQueries(["Nurses"]);
+      console.log(res)
       MySwal.fire({
-        icon: "success",
+        icon: 'success',
         // title: 'Oops...',
-        text: "Deleted ",
-      });
+        text: 'Deleted ',
+
+      })
     } catch (error) {
-      console.log(error);
+      console.log(error)
       MySwal.fire({
-        icon: "error",
+        icon: 'error',
         // title: 'Oops...',
-        text: "some thing went wrong",
-      });
+        text: 'some thing went wrong',
+
+      })
     }
-  };
+  }
   const deleteData = async (e) => {
     console.log(e);
     try {
       const desertRef = ref(storage, `nurses/${e.images.name}`);
       const deleteImg = await deleteObject(desertRef);
-      deleteDocData(e);
+      deleteDocData(e)
       // console.log(deleteImg);
       setAlertType("error");
+
 
       // console.log(deleteImg);
       setAlertType("error");
@@ -306,9 +461,9 @@ const Index = () => {
       }, 5000);
     } catch (err) {
       console.log(err);
-      deleteDocData(e);
-      handleCancel();
-      setLoading(false);
+      deleteDocData(e)
+      handleCancel()
+      setLoading(false)
     }
   };
   const handleUploadImage = async (uid) => {
@@ -332,10 +487,7 @@ const Index = () => {
 
   const fetchData = async () => {
     let arr = [];
-    const dbRef = query(
-      collection(db, "nurses"),
-      where("ref", "==", localStorage.getItem("id"))
-    );
+    const dbRef = collection(db, "nurses");
     try {
       const res = await getDocs(dbRef);
       res.docs.map((doc) => {
@@ -346,7 +498,7 @@ const Index = () => {
       console.log(error);
     }
   };
-  const { isLoading, data, error } = useQuery(["Rehab-Nurses"], fetchData, {
+  const { isLoading, data, error } = useQuery(["Nurses"], fetchData, {
     staleTime: 60000,
   });
   // console.log(isLoading, data);
@@ -364,28 +516,31 @@ const Index = () => {
 
   const handleCancel = () => {
     setFormData({
-      name: "",
-      perDay: "",
-      perHour: "",
-      discount: "",
-      address: "",
-      email: "",
-      password: "",
-      phone: "",
-      details: "",
-      ref: "",
-      role: "nurse",
-      experience: "",
-      workingAt: "",
-      education: "",
-      long: "",
-      rgNo: "",
-      speciality: "",
-      lat: "",
-      id: "",
+      type: null,
+      role: null,
+      full_name: null,
+      email: null,
+      password: null,
+      confirmPassword: null,
+      description: null,
+      discount: null,
+      address: null,
+      city: null,
+      phone: null,
+      is_rehab_employee: null,
+      is_rehab_admin: null,
+      rehab: null,
+      is_super_admin: null,
+      availability: null,
+      details: null,
+      dob: null,
+      education: null,
+      experience: null,
       gender: "male",
-      availability: "weekdays",
-      unavailability: [],
+      hospital: null,
+      emergency: null,
+      perHour: null,
+      perDay: null,
       images: {
         url: "",
         name: "",
@@ -394,7 +549,7 @@ const Index = () => {
     setPreview("");
     setImgName("");
     setVisible(false);
-    setLoading(false);
+    setLoading(false)
   };
 
   const onFinish = (values) => {
@@ -411,6 +566,7 @@ const Index = () => {
         height={95}
         alt="image"
       />
+
     </div>
   ) : preview == "" ? (
     <div>
@@ -426,6 +582,7 @@ const Index = () => {
         height={95}
         alt="image"
       />
+
     </div>
   );
 
@@ -457,12 +614,13 @@ const Index = () => {
     {
       title: (
         <div className="flex items-center justify-center space-x-4">
+
           {/* <Image
-              src={"/images/sort.svg"}
-              width={20}
-              height={20}
-           
-            /> */}
+            src={"/images/sort.svg"}
+            width={20}
+            height={20}
+         
+          /> */}
           <span className="text-base font-poppins font-medium">#</span>
         </div>
       ),
@@ -486,22 +644,23 @@ const Index = () => {
             style={{ marginLeft: "8px" }}
           />
           <span className="text-base font-poppins font-medium">Image</span>
+
         </div>
       ),
       dataIndex: "date",
       render: (_, record) => (
         <div className="w-full flex justify-center items-center">
           {/* <Avatar
-                    icon={<UserOutlined />}
-                    src={
-                      record?.user?.image
-                        ? `${process.env.NEXT_PUBLIC_API_URL}${record?.user?.image.url}`
-                        : ""
-                    }
-                    className="flex items-center justify-center"
-                  /> */}
+                  icon={<UserOutlined />}
+                  src={
+                    record?.user?.image
+                      ? `${process.env.NEXT_PUBLIC_API_URL}${record?.user?.image.url}`
+                      : ""
+                  }
+                  className="flex items-center justify-center"
+                /> */}
           <Image
-            src={record.images ? record.images.url : ""}
+            src={record.images ? record.images.url : ''}
             alt={record.name}
             width={40}
             height={40}
@@ -525,11 +684,11 @@ const Index = () => {
       dataIndex: "name",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.name;
-        return record?.name ? (
+        let short = record.full_name;
+        return record?.full_name ? (
           <div className="flex items-center w-[160px] justify-center space-x-2">
             <span className="text-sm font-poppins text-clip font-medium text-[#474747]">
-              {record.name ? short.slice(0, 50) : "NA"}
+              {record.full_name ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         ) : (
@@ -555,13 +714,42 @@ const Index = () => {
       render: (_, record) => {
         return record?.gender ? (
           <div className="flex items-center justify-center  space-x-2">
-            {record.gender == "male" ? (
-              <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">
-                Male
+            {record.gender == "male" ?
+              <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
+              :
+              <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
+            }
+
+          </div>
+        ) : (
+          "N/A"
+        );
+      },
+    },
+    {
+      title: (
+        <div className="flex items-center space-x-4">
+          <Image
+            src={"/images/sort.svg"}
+            width={20}
+            height={20}
+            style={{ marginLeft: "8px" }}
+          />
+          <span className="text-base font-poppins font-medium">Availability </span>
+        </div>
+      ),
+      dataIndex: "provider",
+      sorter: (a, b) => a.age - b.age,
+      render: (_, record) => {
+        return record?.gender ? (
+          <div className="flex items-center justify-center  space-x-2">
+            {record?.availability == "" ? (
+              <div className="w-[60px] py-1 bg-[#e05a5a] text-center text-[#f3f8f3]">
+                No
               </div>
             ) : (
-              <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">
-                Female
+              <div className="w-[60px] py-1 bg-[#5af79b] text-center text-[#8472CA]">
+                Yes
               </div>
             )}
           </div>
@@ -580,13 +768,13 @@ const Index = () => {
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        let short = record.details;
+        let short = record.description;
 
         return (
           <div className=" flex items-center w-[160px] justify-center">
             <span className="text-sm  text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              {record.details ? short.slice(0, 50) : "NA"}
+              {record.description ? short.slice(0, 50) : "NA"}
             </span>
           </div>
         );
@@ -604,7 +792,7 @@ const Index = () => {
       render: (_, record) => (
         <div className=" flex items-center w-[160px] justify-center">
           <span className="mx-auto text-sm font-poppins font-normal text-[black]  py-1">
-            {record.perDay}
+            {record.fees + "" + "$"}
           </span>
         </div>
       ),
@@ -653,7 +841,44 @@ const Index = () => {
         </div>
       ),
     },
-
+    {
+      title: (
+        <div className="flex items-center space-x-4 justify-center w-[160px]">
+          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+          <span className="text-base font-poppins font-medium">Specialization</span>
+        </div>
+      ),
+      dataIndex: "payment",
+      sorter: (a, b) => a.age - b.age,
+      render: (_, record) => (
+        <div className="w-full flex items-center  justify-center">
+          {
+            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+              {record?.role}
+            </span>
+          }
+        </div>
+      ),
+    },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Medial Registation No</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record?.rgNo}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
     {
       title: (
         <div className="flex items-center space-x-4 justify-center w-[160px]">
@@ -697,7 +922,7 @@ const Index = () => {
         <div className="flex items-center space-x-4 justify-center w-[160px]">
           <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
           <span className="text-base font-poppins font-medium">
-            Medical Registration No
+            Working at
           </span>
         </div>
       ),
@@ -707,88 +932,50 @@ const Index = () => {
         <div className="w-full flex items-center  justify-center">
           {
             <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record.rgNo ? record.rgNo : "NA"}
+              {record.hospital}
             </span>
           }
         </div>
       ),
     },
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Working at</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex items-center  justify-center">
-          {
-            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record.workingAt}
-            </span>
-          }
-        </div>
-      ),
-    },
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Latitude</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex items-center  justify-center">
-          {
-            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record.lat}
-            </span>
-          }
-        </div>
-      ),
-    },
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Longitude</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex items-center  justify-center">
-          {
-            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record.long}
-            </span>
-          }
-        </div>
-      ),
-    },
-    {
-      title: (
-        <div className="flex items-center space-x-4 justify-center w-[160px]">
-          <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
-          <span className="text-base font-poppins font-medium">Address</span>
-        </div>
-      ),
-      dataIndex: "payment",
-      sorter: (a, b) => a.age - b.age,
-      render: (_, record) => (
-        <div className="w-full flex items-center  justify-center">
-          {
-            <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
-              {record?.address ? record.address : "NA"}
-            </span>
-          }
-        </div>
-      ),
-    },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Latitude</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record.lat}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
+    // {
+    //   title: (
+    //     <div className="flex items-center space-x-4 justify-center w-[160px]">
+    //       <Image src={"/images/sort.svg"} width={20} height={20} style={{}} />
+    //       <span className="text-base font-poppins font-medium">Longitude</span>
+    //     </div>
+    //   ),
+    //   dataIndex: "payment",
+    //   sorter: (a, b) => a.age - b.age,
+    //   render: (_, record) => (
+    //     <div className="w-full flex items-center  justify-center">
+    //       {
+    //         <span className="mx-auto text-center text-sm font-poppins font-normal text-[black] w-[160px]  py-1">
+    //           {record.long}
+    //         </span>
+    //       }
+    //     </div>
+    //   ),
+    // },
     {
       title: (
         <div className="flex items-center space-x-4">
@@ -827,7 +1014,7 @@ const Index = () => {
                   label: (
                     <Button
                       onClick={() => {
-                        deleteData(record);
+                        deleteUserdata(record)
                       }}
                       danger
                     >
@@ -848,8 +1035,8 @@ const Index = () => {
             </Button>
           </Dropdown>
           {/* <button className="text-2xl hover:text-3xl font-bold " onClick={onClick}>
-                  <MoreOutlined />
-                </button> */}
+                <MoreOutlined />
+              </button> */}
         </div>
       ),
     },
@@ -890,7 +1077,7 @@ const Index = () => {
         onOk={handleOk}
         onCancel={handleCancel}
         footer={false}
-        // style={{overflowY:"scroll"}}
+      // style={{overflowY:"scroll"}}
       >
         <form onSubmit={handleFormSubmit}>
           <div className="grid grid-cols-12 gap-x-4 gap-y-1">
@@ -905,12 +1092,12 @@ const Index = () => {
                 required
                 className="py-1 px-2 w-full outline-none border-b  border-gray rounded-md"
                 placeholder="Enter Title"
-                value={formData.name}
-                name="name"
+                value={formData.full_name}
+                name="full_name"
                 onChange={handleFormChange}
               />
             </div>
-            <div className="col-span-6 ">
+            {/* <div className="col-span-6 ">
               <div style={{ width: "170px" }}>
                 <label className="text-md   ">Medical Registration No</label>
               </div>
@@ -925,8 +1112,8 @@ const Index = () => {
                 name="rgNo"
                 onChange={handleFormChange}
               />
-            </div>
-            <div className="col-span-6 ">
+            </div> */}
+            {/* <div className="col-span-6 ">
               <div style={{ width: "170px" }}>
                 <label className="text-md   ">Specialization</label>
               </div>
@@ -941,7 +1128,7 @@ const Index = () => {
                 name="speciality"
                 onChange={handleFormChange}
               />
-            </div>
+            </div> */}
             <div className=" col-span-6 w-full md:col-span-6">
               <div style={{ width: "170px" }}>
                 <label className="text-md">Fees/Day</label>
@@ -980,7 +1167,7 @@ const Index = () => {
                 autoComplete="off"
                 type="number"
                 className="py-1 px-2 outline-none border-b w-full  border-gray rounded-md"
-                placeholder="2$"
+                placeholder="2%"
                 value={formData.discount}
                 name="discount"
                 onChange={handleFormChange}
@@ -1036,7 +1223,8 @@ const Index = () => {
               </div>
               <Input.Password
                 autoComplete="off"
-               minLength='6'
+
+                minLength='6'
                 className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                 placeholder="******"
                 value={formData.password}
@@ -1058,23 +1246,23 @@ const Index = () => {
                 onChange={handleFormChange}
               />
             </div>
-            <div className="col-span-6  ">
+            <div className="col-span-6 ">
               <div style={{ width: "170px" }}>
                 <label className="text-md">Gender</label>
               </div>
-              <div>
-                <Select
-                  className="w-full   rounded-md text-black"
-                  name="gender"
-                  onChange={handleGenderChange}
-                >
-                  <Select.Option defaultChecked value="male">
-                    Male
-                  </Select.Option>
-                  <Select.Option value="female">Female</Select.Option>
-                  <Select.Option value="ther">Other</Select.Option>
-                </Select>
-              </div>
+              <select
+                className="  py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
+                name="gender"
+                value={formData.gender}
+                onChange={handleFormChange}
+                placeholder="Gender"
+              >
+                <option defaultChecked className="py-2" value="male">
+                  Male
+                </option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
             </div>
             <div className="col-span-6  ">
               <div style={{ width: "170px" }}>
@@ -1086,8 +1274,8 @@ const Index = () => {
                 type="text"
                 className=" outline-none w-full border-b  border-gray rounded-md"
                 placeholder="working at"
-                value={formData.workingAt}
-                name="workingAt"
+                value={formData.hospital}
+                name="hospital"
                 onChange={handleFormChange}
               />
             </div>
@@ -1107,6 +1295,37 @@ const Index = () => {
               />
             </div>
             <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className="">City</label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.city}
+                name="city"
+                onChange={handleFormChange}
+              />
+            </div>
+            <div className="col-span-6 ">
+              <div style={{ width: "170px" }}>
+                <label className=""> Availability Yes/No
+                </label>
+              </div>
+              <Input
+                autoComplete="off"
+                required
+                type="text"
+                className=" outline-none w-full border-b  border-gray rounded-md"
+                placeholder="Address"
+                value={formData.availability}
+                name="availability"
+                onChange={handleFormChange}
+              />
+            </div>
+            {/* <div className="col-span-6 ">
               <div style={{ width: "170px" }}>
                 <label className="text-md">Latitude</label>
               </div>
@@ -1135,7 +1354,7 @@ const Index = () => {
                 name="long"
                 onChange={handleFormChange}
               />
-            </div>
+            </div> */}
             <div className="col-span-12  ">
               <div style={{ width: "180px" }}>
                 <label className=" ">Details</label>
@@ -1146,8 +1365,8 @@ const Index = () => {
                   type="text"
                   className="py-1 px-2 outline-none w-full border-b  border-gray rounded-md"
                   placeholder="Enter Details Here"
-                  value={formData.details}
-                  name="details"
+                  value={formData.description}
+                  name="description"
                   onChange={handleFormChange}
                 />
               </div>
@@ -1185,12 +1404,12 @@ const Index = () => {
             <div>
               {previewArr.length
                 ? previewArr.map((doc, index) => {
-                    return (
-                      <div key={index}>
-                        <Image src={doc} height={25} width={25} alt="img" />
-                      </div>
-                    );
-                  })
+                  return (
+                    <div key={index}>
+                      <Image src={doc} height={25} width={25} alt="img" />
+                    </div>
+                  );
+                })
                 : ""}
             </div>
           </div>
@@ -1218,12 +1437,13 @@ const Index = () => {
             )}
           </div>
         </form>
+
       </Modal>
 
       <div className="">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={userData}
           onChange={onChange}
           id="newOrders"
           scroll={{ x: 900 }}

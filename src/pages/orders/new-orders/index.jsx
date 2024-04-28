@@ -1,4 +1,4 @@
-import { Table, Avatar, Tag, Menu, Dropdown, Alert ,Spin,Popconfirm} from "antd";
+import { Table, Avatar, Tag, Menu, Dropdown, Alert, Spin, Popconfirm } from "antd";
 import { useEffect, useState } from "react";
 import avatar from "../../../../public/images/user.png";
 import Head from "next/head";
@@ -24,7 +24,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { useQuery ,useQueryClient} from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import {
   ref,
@@ -54,74 +54,102 @@ const Index = () => {
   const router = useRouter();
   const [editData, setEditData] = useState(false);
   const [imgName, setImgName] = useState("");
-  const [orderData,SetOrderData]=useState([])
+  const [orderData, SetOrderData] = useState([])
   const MySwal = withReactContent(Swal)
-  const [role,setRole]=useState(null)
-const queryClient=useQueryClient()
+  const [role, setRole] = useState(null)
+  const queryClient = useQueryClient()
 
 
-let getuserorders = async () => {
-  try {
-    const token = localStorage.getItem("token");
+  let getuserorders = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-    const headers = {
-      authorization: `Bearer ${token}`,
-    };
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
 
-    let url = `${BASE_URL}/user/getAllBookings`;
-    let body = {
-      page: 1,
-      limit: 20,
+      let url = `${BASE_URL}/user/getAllBookings?status=pending`;
+      let body = {
+        page: 1,
+        limit: 20,
+      }
+      // const userCount = await axios.get(url, data,{ headers });
+      const orderlist = await axios({
+        method: 'get',
+        url: url,
+        data: body,
+        headers: headers
+      });
+      console.log("ordersordersorders", orderlist.data.bookings.results)
+      if (orderlist.data) {
+        SetOrderData(orderlist.data.bookings.results);
+      }
+      else {
+        console.log("no rehab Found")
+      }
+
+    } catch (error) {
+      console.log("err..", error);
+      MySwal.hideLoading(); // Assuming MySwal is for a loading indicator
     }
-    // const userCount = await axios.get(url, data,{ headers });
-    const orderlist = await axios({
-      method: 'get',
-      url: url,
-      data: body,
-      headers:headers
-    });
-    console.log("ordersordersorders",orderlist.data.bookings.results)
-    if (orderlist.data) {
-      SetOrderData(orderlist.data.bookings.results);
-    }
-    else {
-      console.log("no rehab Found")
-    }
+  };
+  useEffect(() => {
+    getuserorders()
+  }, [])
 
-  } catch (error) {
-    console.log("err..", error);
-    MySwal.hideLoading(); // Assuming MySwal is for a loading indicator
+
+
+  const ChangeBookingStatus = async (status, id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const headers = {
+        authorization: `Bearer ${token}`,
+      };
+
+      let url = `${BASE_URL}/user/changeBookingStatus`;
+      let body = {
+        status: status,
+        bookingId: id,
+      }
+      // const userCount = await axios.get(url, data,{ headers });
+      const orderlist = await axios({
+        method: 'post',
+        url: url,
+        data: body,
+        headers: headers
+      });
+      // SetOrderData(orderlist.data.bookings.results);
+      getuserorders()
+    } catch (error) {
+      console.log(error)
+    }
   }
-};
-useEffect(() => {
-  getuserorders()
-}, [])
-
-  useEffect(()=>{
-setRole(localStorage.getItem("role"))
-  },[])
+  useEffect(() => {
+    setRole(localStorage.getItem("role"))
+  }, [])
   const fetchData = async () => {
     let arr = [];
     const dbRef = collection(db, "orders");
-    if(localStorage.getItem("role")=="admin"){
+    if (localStorage.getItem("role") == "admin") {
       try {
-     
-        const querySnapshot = await  getDocs(dbRef);
-  
+
+        const querySnapshot = await getDocs(dbRef);
+
         querySnapshot.forEach((doc) => {
           arr.push(doc.data());
-          console.log( new Date( doc.data().Date.seconds).getMonth())
+          console.log(new Date(doc.data().Date.seconds).getMonth())
         });
         // console.log(arr,"data")
         return arr;
       } catch (error) {
         console.log(error);
       }
-    }else{
+    } else {
       try {
-     
-        const querySnapshot = await  getDocs(query(dbRef, where("receiverId", "==", localStorage.getItem("id"))));
-  
+
+        const querySnapshot = await getDocs(query(dbRef, where("receiverId", "==", localStorage.getItem("id"))));
+
         querySnapshot.forEach((doc) => {
           arr.push(doc.data());
         });
@@ -130,89 +158,89 @@ setRole(localStorage.getItem("role"))
         console.log(error);
       }
     }
- 
+
   };
 
-  const { isLoading, data, error, } = useQuery(["Orders"],  fetchData, {
-   refetchOnWindowFocus:"always",
- 
+  const { isLoading, data, error, } = useQuery(["Orders"], fetchData, {
+    refetchOnWindowFocus: "always",
+
   });
   // console.log({data});
-if(!isLoading){
-  console.log(error)
-}
+  if (!isLoading) {
+    console.log(error)
+  }
 
-  const acceptOrder=async(res)=>{
-   
-    try{
+  const acceptOrder = async (res) => {
+
+    try {
       const rep = await updateDoc(doc(db, "orders", res.id), {
         status: "accepted",
-       
-    
+
+
       });
       console.log(rep)
-      
+
       queryClient.invalidateQueries(['Orders'])
       MySwal.fire({
         icon: 'success',
         text: 'Status Updated',
-   
+
       })
-    
-    }catch(err){
+
+    } catch (err) {
       MySwal.fire({
         icon: 'error',
         title: 'Oops...',
         text: 'Something went wrong!',
-   
+
       })
       console.log(err)
     }
 
   }
-  const rejectOrder=async(res)=>{
-   
-    try{
+  const rejectOrder = async (res) => {
+
+    try {
       const rep = await updateDoc(doc(db, "orders", res.id), {
         status: "rejected",
-    
+
       });
       queryClient.invalidateQueries(['Orders'])
       MySwal.fire({
         icon: 'success',
         text: 'Status Updated',
-   
+
       })
-    }catch(err){
+    } catch (err) {
       MySwal.fire({
         icon: 'error',
         title: 'Oops...',
         text: 'Something went wrong!',
-   
+
       })
       console.log(err)
     }
 
   }
-  const completeOrder=async(res)=>{
-   
-    try{
+  const completeOrder = async (res) => {
+
+    try {
       const rep = await updateDoc(doc(db, "orders", res.id), {
         status: "completed",
-        payment:"paid"
+        payment: "paid"
       });
       queryClient.invalidateQueries(['Orders'])
       MySwal.fire({
         icon: 'success',
         text: 'Status Updated',
-   
+
       })
-    }catch(err){
+    } catch (err) {
       MySwal.fire({
         icon: 'error',
         title: 'Oops...',
         text: 'Something went wrong!',
-   
+
       })
       console.log(err)
     }
@@ -221,7 +249,7 @@ if(!isLoading){
 
 
 
- 
+
   // console.log(Menu, "menue");
   const items = [
     {
@@ -245,22 +273,22 @@ if(!isLoading){
     {
       title: (
         <div className="flex items-center justify-center space-x-4">
-         
+
           {/* <Image
             src={"/images/sort.svg"}
             width={20}
             height={20}
          
           /> */}
-           <span className="text-base font-poppins font-medium">#</span>
+          <span className="text-base font-poppins font-medium">#</span>
         </div>
       ),
       dataIndex: "no",
       sorter: (a, b) => a.age - b.age,
-      render: (_, record,index) => (
+      render: (_, record, index) => (
         <div className="w-full flex items-center justify-center">
           <span className="text-base font-poppins font-medium text-[#474747]">
-            {index+1}
+            {index + 1}
           </span>
         </div>
       ),
@@ -321,7 +349,7 @@ if(!isLoading){
       },
     },
 
-  
+
     {
       title: (
         <div className="flex items-center justify-center  w-[160px] space-x-4">
@@ -366,7 +394,7 @@ if(!isLoading){
             </span>
             <span className="text-sm   text-clip font-poppins font-medium text-[#474747]">
               {/* {record.description} */}
-              To {record.patientDetail?.bookTo ? record?.patientDetail?.bookTo  : "NA"}
+              To {record.patientDetail?.bookTo ? record?.patientDetail?.bookTo : "NA"}
             </span>
           </div>
         );
@@ -382,17 +410,17 @@ if(!isLoading){
       dataIndex: "service",
       sorter: (a, b) => a.age - b.age,
       render: (_, record) => {
-        
-        let dobString = record.DOB; 
-        let dobDate = new Date(dobString); 
-        
-        let currentDate = new Date(); 
-        
-        let currentYear = currentDate.getFullYear(); 
-        let dobYear = dobDate.getFullYear(); 
+
+        let dobString = record.DOB;
+        let dobDate = new Date(dobString);
+
+        let currentDate = new Date();
+
+        let currentYear = currentDate.getFullYear();
+        let dobYear = dobDate.getFullYear();
 
         let patientAge = currentYear - dobYear;
-       
+
 
         return (
           <div className=" flex  items-center  w-[160px] justify-center">
@@ -400,7 +428,7 @@ if(!isLoading){
               {/* {record.description} */}
               {record.DOB ? `${patientAge} Years` : "NA"}
             </span>
-          
+
           </div>
         );
       },
@@ -461,7 +489,7 @@ if(!isLoading){
             src={"/images/sort.svg"}
             width={20}
             height={20}
-            
+
           />
           <span className="text-base font-poppins font-medium">Patient Gender</span>
         </div>
@@ -471,12 +499,12 @@ if(!isLoading){
       render: (_, record) => {
         return record?.gender ? (
           <div className="flex items-center justify-center  space-x-2">
-          {record.gender =="male"?
-             <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
-         :
-         <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
+            {record.gender == "male" ?
+              <div className="w-[60px] py-1 bg-[#DCEDE5] text-center text-[#3CB43C]">Male</div>
+              :
+              <div className="w-[60px] py-1 bg-[#E7E3F6] text-center text-[#8472CA]">Female</div>
             }
-          
+
           </div>
         ) : (
           "N/A"
@@ -497,7 +525,7 @@ if(!isLoading){
 
         return (
           <div className=" flex items-center w-[160px] justify-center">
-         
+
             <span className="text-sm   text-clip font-poppins capitalize font-medium text-[#474747]">
               {/* {record.description} */}
               {record.status ? short.slice(0, 50) : "NA"}
@@ -523,8 +551,8 @@ if(!isLoading){
       render: (_, record) => (
         <div className="w-[250px] flex items-center justify-center">
           <span
-       
-            className={`${record.payment_status!=="unpaid"? 'bg-green-300':'bg-orange'} mx-auto text-sm w-[250px] text-center font-poppins font-normal text-[black] px-6 py-1`}
+
+            className={`${record.payment_status !== "unpaid" ? 'bg-green-300' : 'bg-orange'} mx-auto text-sm w-[250px] text-center font-poppins font-normal text-[black] px-6 py-1`}
           >
             {record.payment_status}
           </span>
@@ -547,14 +575,14 @@ if(!isLoading){
         <div className="w-full flex items-center justify-center bg-white text-white">
           <Dropdown
             menu={{
-              
+
               items: [
                 {
                   label: (
                     <Button
                       className="text-green-300 hover:text-white bg-blue-900 w-full px-4 py-1 rounded-md "
                       onClick={() => {
-                      acceptOrder(record)
+                        ChangeBookingStatus("accepted", record._id.toString())
                       }}
                     >
                       Accept
@@ -564,23 +592,23 @@ if(!isLoading){
                 },
                 {
                   label: (
-               
+
                     <Button className="w-[90px]" onClick={() => {
-                        rejectOrder(record)
-                    }}  danger>Reject</Button>
-                
-                  // className="text-white bg-red-800 w-full px-2 py-1 rounded-md "
+                      ChangeBookingStatus("rejected", record._id.toString())
+                    }} danger>Reject</Button>
+
+                    // className="text-white bg-red-800 w-full px-2 py-1 rounded-md "
                   ),
                   key: "Reject",
                 },
                 {
                   label: (
-               
-                    <Button type="primary"  onClick={() => {
-                      completeOrder(record)
-                    }}  danger>Complete</Button>
-                
-                  // className="text-white bg-red-800 w-full px-2 py-1 rounded-md "
+
+                    <Button type="primary" onClick={() => {
+                      ChangeBookingStatus("completed", record._id.toString())
+                    }} danger>Complete</Button>
+
+                    // className="text-white bg-red-800 w-full px-2 py-1 rounded-md "
                   ),
                   key: "Complete",
                 },
@@ -588,7 +616,7 @@ if(!isLoading){
             }}
             placement="bottomLeft"
             theme={"dark"}
-            
+
           >
             <Button>
               <MoreOutlined />
@@ -621,7 +649,7 @@ if(!isLoading){
     <div className="flex flex-col bg-white space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="font-semibold font-barlow text-2xl ml-6">New Orders</h1>
-     
+
       </div>
 
 

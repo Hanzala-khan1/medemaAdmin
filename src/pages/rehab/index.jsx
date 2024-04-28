@@ -185,8 +185,8 @@ const Index = () => {
           })
           .finally(() => {
             MySwal.hideLoading();
-            // handleOk();
-            // handleCancel()
+            handleOk();
+            handleCancel()
           });
       } else {
         console.log("i am ok")
